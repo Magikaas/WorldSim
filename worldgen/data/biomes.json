@@ -1,0 +1,6 @@
+{
+    "biomes": [
+        {"name": "Forest", "conditions": {"min_height": 0.2, "max_height": 0.8, "min_temp": 0.3, "max_temp": 0.7}},
+        {"name": "Desert", "conditions": {"min_height": 0, "max_height": 0.1, "min_temp": 0.6, "max_temp": 1.0}}
+    ]
+}
