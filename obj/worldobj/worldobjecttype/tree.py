@@ -1,4 +1,5 @@
 import numpy as np
+from obj.worldobject import WorldObject
 
 # Enum with different growth speeds for trees
 class TreeGrowthSpeed:
@@ -15,7 +16,7 @@ class HarvestType:
     SCYTHE = 'scythe'
     SICKLE = 'sickle'
 
-class Tree():
+class Tree(WorldObject):
     def __init__(self, type, food_value=np.random.randint(25,100), age=np.random.randint(0, 100), max_age=100, growth_speed=TreeGrowthSpeed.MEDIUM, harvest_type=None, harvest_result=None):
         self.type = type
         self.age = age

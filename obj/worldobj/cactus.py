@@ -1,4 +1,4 @@
-from obj import Tree, HarvestType
+from .worldobjecttype.tree import Tree, HarvestType
 
 class Cactus(Tree):
     def __init__(self):

@@ -1,6 +1,7 @@
 import numpy as np
+from obj.worldobject import WorldObject
 
-class Animal():
+class Animal(WorldObject):
     def __init__(self, species, location, health, food_value):
         self.species = species
         self.location = location

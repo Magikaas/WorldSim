@@ -1,5 +1,5 @@
 from obj.world import World
-from obj.worldobj.pop import Pop
+from obj.worldobj.worldobjecttype.pop import Pop
 import numpy as np
 
 def initialize_pops(world, initial_pop_count):
@@ -8,7 +8,7 @@ def initialize_pops(world, initial_pop_count):
         # Example: Random placement. Adjust logic for specific starting conditions.
         x = np.random.randint(0, world.width)
         y = np.random.randint(0, world.height)
-        pop = Pop(id=i)
+        pop = Pop(id=i, name=f"Pop {i}", location=(x, y))
         # Optionally, set the pop's location or other properties based on world conditions
         initial_pops.append(pop)
     return initial_pops

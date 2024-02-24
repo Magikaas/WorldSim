@@ -1,3 +1,12 @@
+class TerrainHeight:
+    OCEAN = -1
+    SHALLOW_COASTAL_WATER = -0.5
+    RIVER = -0.1
+    LAND = 0.1
+    HILLS = 0.6
+    MOUNTAIN = 0.8
+    MOUNTAIN_PEAK = 1
+
 class Terrain():
     def __init__(self, name, colour):
         self.name = name
