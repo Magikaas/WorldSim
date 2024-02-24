@@ -25,7 +25,7 @@ class PopManager():
     def get_pops(self) -> List[Pop]:
         return self.pops
     
-    def get_pops_at(self, x, y):
+    def get_pops_at(self, x, y) -> List[Pop]:
         pops = []
         for pop in self.pops:
             if pop.location == (x, y):

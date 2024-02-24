@@ -21,11 +21,7 @@ class TileRenderer():
             # Render the animal as a brown square
             coordinate_colour = (139, 69, 19)
         else:
-            # Set the pixel color based on the biome
-            coordinate_colour = tile.get_biome().determine_tile_colour()
-        
-        # Set the pixel color based on the biome
-        coordinate_colour = self.get_tile().determine_tile_colour()
+            coordinate_colour = self.get_render_info()
         
         return coordinate_colour
     
@@ -33,11 +29,11 @@ class TileRenderer():
         """Prepare and return information needed for rendering this tile."""
         # This method can be expanded based on what information the renderer needs
         # Example: Return the most dominant feature of the tile for rendering
-        if self.get_tile().get_tree():
+        if len(self.get_tile().get_trees()) > 0:
             return (0, 255, 0)
-        elif self.get_tile().get_animals():
+        elif len(self.get_tile().get_animals()) > 0:
             return (165, 42, 42)
-        elif self.get_tile().get_pops():
+        elif len(self.get_tile().get_pops()) > 0:
             return (128, 0, 128)
         
         return self.get_terrain_colour()

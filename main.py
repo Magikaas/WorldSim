@@ -68,7 +68,7 @@ def prep_simulation():
     initial_pop_count = 10  # Starting number of population units
     seed = 1234  # For deterministic world generation
     
-    np.random.seed(hash(seed) % 2**32)
+    # np.random.seed(hash(seed) % 2**32)
 
     # Initialize the world
     world = World(world_width, world_height, seed=seed)
@@ -83,7 +83,7 @@ def prep_simulation():
 def main():
     world = prep_simulation()
     
-    do_render = True  # Set to True to render each step of the simulation to an image file
+    do_render = True # Set to True to render each step of the simulation to an image file
 
     run_simulation(world, max_iterations=1000, render=do_render, render_frequency=500)
 

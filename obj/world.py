@@ -116,7 +116,7 @@ class World:
         for x in range(self.width):
             row = []
             for y in range(self.height):
-                row.append(Tile(location=(x, y), terrain=self.get_terrain_obj_at(x, y), biome=self.get_biome_type_at(x, y)))
+                row.append(Tile(location=(x, y), terrain=self.get_terrain_obj_at(x, y), biome=self.get_biome(self.get_biome_type_at(x, y))))
             map.append(row)
         self.map = map
     
