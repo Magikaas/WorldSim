@@ -26,14 +26,16 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
         if render and step_nr % render_frequency == 0:
             print ("Simulation cycle %d" % step_nr)
             
+            str_seed = str(sim_seed)
+            
             # if a folder does not exist, create it
-            filename = "output/" + sim_seed + "/simstep_" + step_nr.__str__() + ".png"
+            filename = "output/" + str_seed + "/simstep_" + step_nr.__str__() + ".png"
             
             if os.path.exists("output") == False:
                 os.mkdir("output")
             
-            if os.path.exists("output/" + sim_seed) == False:
-                os.mkdir("output/" + sim_seed)
+            if os.path.exists("output/" + str_seed) == False:
+                os.mkdir("output/" + str_seed)
             
             world_helper.set_world(world)
             
@@ -51,7 +53,7 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
             # world.add_pop(new_pop)
 
 def check_end_conditions(world):
-    return len(world.pops) == 0 or world_reached_goal(world)
+    return len(PopManager().get_pops()) == 0 or world_reached_goal(world)
 
 def world_reached_goal(world: World):
     # Define the conditions for what it means for the world to have "reached its goal"
@@ -81,9 +83,9 @@ def prep_simulation():
 def main():
     world = prep_simulation()
     
-    do_render = False  # Set to True to render each step of the simulation to an image file
+    do_render = True  # Set to True to render each step of the simulation to an image file
 
-    run_simulation(world, max_iterations=10000, render=do_render, render_frequency=250)
+    run_simulation(world, max_iterations=1000, render=do_render, render_frequency=500)
 
     print("Simulation complete")
 

@@ -1,12 +1,14 @@
 import numpy as np
-from worldgen import WorldGenerator, Tile
+from world import WorldGenerator, Tile
 from .worldobj import AppleTree, Cactus
 from .worldobj import Animal
 from .popmanager import PopManager
 
-from worldgen.terrain import Terrain, TerrainHeight
-from worldgen.biome import Biome, Temperature, BiomeType
-from worldgen.terraintype import *
+from world.terrain import Terrain, TerrainHeight
+from world.biome import Biome, Temperature, BiomeType
+from world.terraintype import *
+
+from render.tilerenderer import TileRenderer
 
 from PIL import Image
 
@@ -46,10 +48,8 @@ class World:
         
         if terrain_value < TerrainHeight.SHALLOW_COASTAL_WATER:
             return Ocean()
-        elif terrain_value >= TerrainHeight.SHALLOW_COASTAL_WATER and terrain_value < TerrainHeight.RIVER:
+        elif terrain_value >= TerrainHeight.SHALLOW_COASTAL_WATER and terrain_value < TerrainHeight.LAND:
             return ShallowCoastalWater()
-        elif terrain_value >= TerrainHeight.RIVER and terrain_value < TerrainHeight.LAND:
-            return River()
         elif terrain_value >= TerrainHeight.LAND and terrain_value < TerrainHeight.HILLS:
             return Plains()
         elif terrain_value >= TerrainHeight.HILLS and terrain_value < TerrainHeight.MOUNTAIN:
@@ -158,9 +158,9 @@ class World:
             for y in range(self.height):
                 tile = self.get_tile(x, y)
                 
-                coordinate_colour = (0, 0, 0)
+                tile_renderer = TileRenderer(tile)
                 
-                coordinate_colour = tile.get_render_info()
+                coordinate_colour = tile_renderer.render()
                 
                 if scale != 1:
                     for i in range(scale):

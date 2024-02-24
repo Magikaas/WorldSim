@@ -1,4 +1,4 @@
-from worldgen.terrain import Terrain
+from world.terrain import Terrain
 
 class Desert(Terrain):
     def __init__(self):

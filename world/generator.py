@@ -29,14 +29,10 @@ class WorldGenerator:
         
         perlin = Perlin(octaves=octaves, persistence=persistence, lacunarity=lacunarity, seed=self.seed)
         
-        map_data = noise_map_plane(width=size[0], height=size[1], lower_x=-1, upper_x=6, lower_z=1, upper_z=4, source=perlin)
+        map_data = noise_map_plane(width=size[0], height=size[1], lower_x=-2, upper_x=6, lower_z=-1, upper_z=5, source=perlin)
         
         with open(mapfilepath, 'w') as writer:
             writer.write(','.join(map(str, map_data)))
-        
-        # gradient = terrain_gradient()
-        # render = RenderImage()
-        # render.render(size[0], size[1], map, 'terrain.png', gradient)
 
         return map_data
     

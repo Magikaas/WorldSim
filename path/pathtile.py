@@ -1,6 +1,6 @@
-from worldgen.tile import Tile
-from worldgen.biome import Biome, BiomeType
-from worldgen.terraintype import *
+from world.tile import Tile
+from world.biome import Biome, BiomeType
+from world.terraintype import *
 
 class PathTile:
     def __init__(self, tile: Tile):

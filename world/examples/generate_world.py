@@ -1,5 +1,5 @@
 # examples/generate_world.py
-from worldgen import WorldGenerator, visualize_world
+from world import WorldGenerator, visualize_world
 
 def main():
     seed = 42

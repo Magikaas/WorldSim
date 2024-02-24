@@ -19,7 +19,7 @@ class Terrain():
         self.name = name
         return self
     
-    def get_colour(self):
+    def get_colour(self) -> tuple:
         return self.colour
     
     def set_colour(self, colour):
