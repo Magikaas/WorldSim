@@ -36,8 +36,10 @@ class World:
         return self
 
     def generate_terrain(self):
-        # Placeholder for terrain generation logic
-        self.terrain = WorldGenerator(seed=self.seed + "_terrain").generate_map((self.height, self.width))
+        self.terrain = WorldGenerator(seed=self.seed).generate_map((self.height, self.width))
+
+    def generate_temperature(self):
+        self.biomes = WorldGenerator(seed=self.seed + 1).generate_map((self.height, self.width))
     
     def get_terrain_obj_at(self, x, y) -> Terrain:
         terrain_value = self.terrain[x * self.width + y]
@@ -59,10 +61,6 @@ class World:
         else:
             print("Invalid terrain value: " + str(terrain_value))
             return Unland()
-
-    def generate_temperature(self):
-        # Placeholder for temperature generation logic
-        self.biomes = WorldGenerator(seed=self.seed + "_temperature").generate_map((self.height, self.width))
     
     def get_biome_type_at(self, x, y) -> Biome:
         land_height = self.terrain[self.width * x + y]

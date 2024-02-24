@@ -64,7 +64,7 @@ def prep_simulation():
     world_width = 250  # Example dimension
     world_height = 250  # Example dimension
     initial_pop_count = 10  # Starting number of population units
-    seed = "1234"  # For deterministic world generation
+    seed = 1234  # For deterministic world generation
     
     np.random.seed(hash(seed) % 2**32)
 

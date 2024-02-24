@@ -17,9 +17,7 @@ class WorldGenerator:
         map_data = np.zeros(size)
         # return map
         
-        seed = 123
-        
-        mapfilepath = "map/" + str(seed) + ".map"
+        mapfilepath = "map/" + str(self.seed) + ".map"
         
         if os.path.exists("map") == False:
             os.mkdir("map")
@@ -29,7 +27,7 @@ class WorldGenerator:
                 map_data = reader.read().split(',')
                 return list(map(float, map_data))
         
-        perlin = Perlin(octaves=octaves, persistence=persistence, lacunarity=lacunarity, seed=seed)
+        perlin = Perlin(octaves=octaves, persistence=persistence, lacunarity=lacunarity, seed=self.seed)
         
         map_data = noise_map_plane(width=size[0], height=size[1], lower_x=-1, upper_x=6, lower_z=1, upper_z=4, source=perlin)
         
