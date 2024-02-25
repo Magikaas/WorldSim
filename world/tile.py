@@ -7,7 +7,7 @@ from obj.worldobj.animal import Animal
 from obj.worldobj.worldobjecttype.pop import Pop
 from obj.worldobj.worldobjecttype.tree import Tree
 
-from obj.popmanager import PopManager
+from helpers.popmanager import PopManager
 
 class Tile():
     def __init__(self, location, terrain, biome):

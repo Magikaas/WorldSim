@@ -3,8 +3,9 @@ import cProfile
 import pstats
 
 # examples/generate_world.py
-from obj.world import World
-from obj.popmanager import PopManager
+from world.world import World
+from helpers.popmanager import PopManager
+from helpers.popmovemanager import PopMoveManager
 
 from helpers import worldhelper
 
@@ -44,7 +45,7 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
         # Update the world state, which includes updating all pops within it
         world.update()
 
-        if check_end_conditions(world):
+        if check_end_conditions(world) and False:
             print(f"Simulation ended at iteration {iteration}")
             break
 
@@ -57,7 +58,7 @@ def check_end_conditions(world):
 
 def world_reached_goal(world: World):
     # Define the conditions for what it means for the world to have "reached its goal"
-    if len(world.pops) > 1000:
+    if len(PopManager().get_pops()) > 1000:
         return True
     return False  # Placeholder logic
 
@@ -69,9 +70,25 @@ def prep_simulation():
     seed = 1234  # For deterministic world generation
     
     # np.random.seed(hash(seed) % 2**32)
+    
+    pop_move_manager = PopMoveManager()
+    
+    PopManager().add_pop_move_manager(pop_move_manager)
 
     # Initialize the world
-    world = World(world_width, world_height, seed=seed)
+    world = World()
+    
+    world.set_seed(seed)
+    world.set_pop_move_manager(pop_move_manager)
+    
+    pop_move_manager.set_world(world)
+    
+    world.set_pop_move_manager(pop_move_manager)
+    
+    world.set_height(world_height)
+    world.set_width(world_width)
+    
+    world.prepare()
     
     initial_pops = initialize_pops(world, initial_pop_count)
     

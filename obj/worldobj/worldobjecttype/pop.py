@@ -1,6 +1,8 @@
 from .entity import Entity
 import numpy as np
 
+from helpers.popmovemanager import PopMoveManager
+
 class PopState:
     IDLE = 0
     WORKING = 1
@@ -14,7 +16,7 @@ class PopState:
     WANDERING = 256
 
 class Pop(Entity):
-    def __init__(self, id, name, location, age=0, role='worker', health=100, food=100, water=100, state=PopState.IDLE):
+    def __init__(self, id, name, location, age=0, role='worker', health=100, food=100, water=100, state=PopState.IDLE, speed=1):
         super().__init__(id, name, location)
         self.role = role
         self.age = age
@@ -22,6 +24,7 @@ class Pop(Entity):
         self.food = food
         self.water = water
         self.state = state
+        self.speed = speed
         
         self.wander()
     
@@ -48,6 +51,10 @@ class Pop(Entity):
         self.state = PopState.WANDERING
         return self
     
+    def set_location(self, location):
+        self.location = location
+        return self
+    
     def update(self):
         # Update logic for aging, health changes, skill improvements, etc.
         self.age += 1
@@ -64,16 +71,20 @@ class Pop(Entity):
         # self.determineNextTask()
         
         if self.state == PopState.WANDERING:
-            xD = 0
-            yD = 0
+            xDiff = 0
+            yDiff = 0
             
-            while xD == 0 and yD == 0:
+            while xDiff == 0 and yDiff == 0:
                 # Move in a random direction
-                xD = np.random.randint(-1, 1)
-                if xD == 0:
-                    yD = np.random.randint(-1, 1)
+                xDiff = np.random.randint(-1 * self.speed, self.speed)
+                if xDiff == 0:
+                    yDiff = np.random.randint(-1 * self.speed, self.speed)
+                
+                # Generate step in random 8-point direction as tuple (-1, 1)/(0, 1) for example, once we reach the edge, make that direction's value 0
+                if self.location[0] + xDiff < 0 or self.location[0] + xDiff >= 10:
+                    xDiff = 0
             
-            self.location = (self.location[0] + xD, self.location[1] + yD)
+            PopMoveManager().move_pop(self, (xDiff, yDiff))
             
         
         # Update logic for the pop's current state

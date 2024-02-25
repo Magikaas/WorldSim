@@ -1,8 +1,9 @@
 import numpy as np
 from world import WorldGenerator, Tile
-from .worldobj import AppleTree, Cactus
-from .worldobj import Animal
-from .popmanager import PopManager
+from obj.worldobj import AppleTree, Cactus
+from obj.worldobj import Animal
+from helpers.popmanager import PopManager
+from helpers.popmovemanager import PopMoveManager
 
 from world.terrain import Terrain, TerrainHeight
 from world.biome import Biome, Temperature, BiomeType
@@ -12,23 +13,37 @@ from render.tilerenderer import TileRenderer
 
 from PIL import Image
 
+# Longterm TODO: Make singleton possible with multiple 'Worlds'
 class World:
-    def __init__(self, width, height, seed=None):
-        self.width = width
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(World, cls).__new__(cls)
+            
+            cls._instance.__init__(**kwargs)
+        return cls._instance
+    
+    def __init__(self):
+        # Initialize only if not already initialized
+        if not hasattr(self, 'initialized'):  # This prevents re-initialization
+            self.initialized = True  # Mark as initialized
+            
+            self.terrain = None
+            self.temperature = None
+            self.biomes = None
+    
+    def set_pop_move_manager(self, manager):
+        self.pop_move_manager = manager
+        return self
+    
+    def set_height(self, height):
         self.height = height
-        self.seed = seed if seed else np.random.randint(0, 10000)
-        self.terrain = None
-        self.temperature = None
-        self.biomes = None
-        self.resources = None
-        self.pops = []
-        
-        # Initialize the world's layers
-        self.generate_terrain()
-        self.generate_temperature()
-        self.initialize_resources()
-        
-        self.generate_map()
+        return self
+    
+    def set_width(self, width):
+        self.width = width
+        return self
     
     def get_seed(self):
         return self.seed
@@ -36,7 +51,14 @@ class World:
     def set_seed(self, seed):
         self.seed = seed
         return self
-
+    
+    def prepare(self):
+        # Placeholder for any setup that needs to be done before the simulation starts
+        self.generate_terrain()
+        self.generate_temperature()
+        
+        self.generate_map()
+    
     def generate_terrain(self):
         self.terrain = WorldGenerator(seed=self.seed).generate_map((self.height, self.width))
 
@@ -122,10 +144,6 @@ class World:
     
     def get_tile(self, x, y) -> Tile:
         return self.map[x][y]
-
-    def initialize_resources(self):
-        # Placeholder for initializing resources on the map
-        self.resources = np.zeros((self.height, self.width))
     
     # Find a tile with the given terrain type
     def find_tile_with_terrain(self, terrain_type) -> Tile:

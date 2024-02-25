@@ -1,4 +1,4 @@
-from obj.world import World
+from world.world import World
 from obj.worldobj.worldobjecttype.pop import Pop
 import numpy as np
 
