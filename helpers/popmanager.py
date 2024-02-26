@@ -17,7 +17,6 @@ class PopManager():
     
     def add_pop_move_manager(self, pop_move_manager: PopMoveManager):
         self.pop_move_manager = pop_move_manager
-        return self
     
     def generate_pop(self, name=None, location=(0, 0)):
         if name is None:
@@ -28,19 +27,15 @@ class PopManager():
     
     def add_pop(self, pop: Pop):
         self.pops.append(pop)
-        
-        return self
     
     def remove_pop(self, pop):
         self.pops.remove(pop)
-        return self
     
     def get_pops(self) -> List[Pop]:
         return self.pops
     
     def move_pop(self, pop, x, y):
         self.pop_move_manager.move_pop(pop, x, y)
-        return self
     
     def get_pops_within_radius(self, x, y, radius):
         pops = []
@@ -52,4 +47,3 @@ class PopManager():
     def update(self):
         for pop in self.pops:
             pop.update()
-        return self

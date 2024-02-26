@@ -10,7 +10,7 @@ class WorldGenerator:
         self.seed = seed
     
     def generate_noise_map(self, scale, offset=0, octaves=6, persistence=0.5, lacunarity=2.0):
-        noise_map = np.zeros((self.width, self.height))
+        noise_map = [[0] * self.width for i in range(self.height)]
         for i in range(self.width):
             for j in range(self.height):
                 noise_value = pnoise2((i + offset) / scale, 

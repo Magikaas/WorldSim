@@ -61,4 +61,3 @@ class TileRenderer():
     
     def set_tile(self, tile):
         self.tile = tile
-        return self

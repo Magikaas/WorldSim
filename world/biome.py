@@ -20,14 +20,12 @@ class Biome():
     
     def set_name(self, name):
         self.name = name
-        return self
     
     def get_colour(self):
         return self.colour
     
     def set_colour(self, colour):
         self.colour = colour
-        return self
     
     def get_tree_spawn_chance(self):
         return self.get_fertility * 50
@@ -37,4 +35,3 @@ class Biome():
     
     def set_fertility(self, fertility):
         self.fertility = fertility
-        return self

@@ -31,35 +31,30 @@ class Tree(WorldObject):
     
     def set_type(self, type):
         self.type = type
-        return self
     
     def get_type(self):
         return self.type
     
     def set_food_value(self, food_value):
         self.food_value = food_value
-        return self
     
     def get_food_value(self):
         return self.food_value
     
     def set_growth_speed(self, growth_speed):
         self.growth_speed = growth_speed
-        return self
     
     def get_growth_speed(self):
         return self.growth_speed
     
     def set_max_age(self, max_age):
         self.max_age = max_age
-        return self
     
     def get_max_age(self):
         return self.max_age
     
     def set_age(self, age):
         self.age = age
-        return self
     
     def get_age(self):
         return self.age
@@ -75,18 +70,13 @@ class Tree(WorldObject):
             self.food_value += self.growth_speed
         else:
             self.food_value = self.max_food_value
-        return self
     
     def harvest(self):
         if self.food_value > 0:
             self.food_value = 0
-            return self
-        else:
-            return self
     
     def is_dead(self):
         return self.age > self.max_age
     
     def age(self):
         self.age += 1
-        return self

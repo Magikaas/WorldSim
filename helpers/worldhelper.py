@@ -9,8 +9,7 @@ class WorldHelper():
     
     def set_world(self, world):
         self.world = world
-        return self
-    
+            
     def get_biome_at(self, x, y):
         return self.world.get_biome_at(x, y)
     

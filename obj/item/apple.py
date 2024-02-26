@@ -11,4 +11,3 @@ class Apple(Item):
     
     def set_food_value(self, food_value):
         self.food_value = food_value
-        return self

@@ -13,22 +13,35 @@ from render.renderoutput import RenderOutput
 
 import os
 
+profiler = cProfile.Profile()
+# profiler.enable()
+
 def run_simulation(world: World, max_iterations=1000, render=False, render_frequency=1000):
     step_nr = 0
     
     sim_seed = world.get_seed()
     
-    scale = 1
+    scale = 5
     
-    clock = pygame.time.Clock()
+    if render:
+        clock = pygame.time.Clock()
+        
+        width = world.get_size()[0]
+        height = world.get_size()[1]
+        
+        world_size = (width * scale, height * scale)
+        
+        window = pygame.display.set_mode(world_size)
+        
+        image = None
     
-    window = pygame.display.set_mode(world.get_size())
-    
-    image = None
-    
+    profiler.enable()
     for iteration in range(max_iterations):
+        if render:
+            pygame.event.get()
+            clock.tick(60)
+        
         step_nr += 1
-        clock.tick(60)
         
         if render and step_nr % render_frequency == 0:
             print ("Simulation cycle %d" % step_nr)
@@ -44,12 +57,18 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
             if os.path.exists("output/" + str_seed) == False:
                 os.mkdir("output/" + str_seed)
         
-        image = world.render(img=image, scale=scale, output=RenderOutput.VARIABLE)
-        surface = pygame.image.fromstring(image.tobytes(), image.size, image.mode).convert()
-        
-        window.fill(0)
-        window.blit(surface, surface.get_rect(center = (world.width/2, world.height/2)))
-        pygame.display.flip()
+        if render:
+            if image is None:
+                profiler.disable()
+            image = world.render(img=image, scale=scale, output=RenderOutput.VARIABLE)
+            if image is not None:
+                profiler.enable()
+            
+            surface = pygame.image.fromstring(image.tobytes(), image.size, image.mode).convert()
+            
+            window.fill(0)
+            window.blit(surface, surface.get_rect(center = (world.width*scale/2, world.height*scale/2)))
+            pygame.display.flip()
         
         # Update the world state, which includes updating all pops within it
         world.update()
@@ -61,6 +80,7 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
         # Example: You could add new pops or change the world based on specific conditions
         # if iteration % 100 == 0:
             # world.add_pop(new_pop)
+    profiler.disable()
 
 def check_end_conditions(world):
     return len(PopManager().get_pops()) == 0 or world_reached_goal(world)
@@ -72,11 +92,11 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    # Example setup and execution of the simulation
-    world_width = 256  # Example dimension
-    world_height = 256  # Example dimension
-    initial_pop_count = 10  # Starting number of population units
-    seed = 1234  # For deterministic world generation
+    world_width = 256
+    world_height = 256
+    initial_pop_count = 10
+    seed = 1234
+    chunk_size = 16
     
     # np.random.seed(hash(seed) % 2**32)
     
@@ -88,6 +108,7 @@ def prep_simulation():
     world = World()
     
     world.set_seed(seed)
+    world.set_chunk_size(chunk_size)
     world.set_pop_move_manager(pop_move_manager)
     
     pop_move_manager.set_world(world)
@@ -100,7 +121,7 @@ def prep_simulation():
     world.prepare()
     
     for i in range(initial_pop_count):
-        world.add_pop_at((random.randint(0, world.width), random.randint(0, world.height)))
+        world.add_pop_at((random.randint(0, world.width-1), random.randint(0, world.height-1)))
 
     return world
 
@@ -109,7 +130,7 @@ def main():
     
     do_render = True # Set to True to render each step of the simulation to an image file
 
-    run_simulation(world, max_iterations=25, render=do_render, render_frequency=5)
+    run_simulation(world, max_iterations=1000, render=do_render, render_frequency=25)
 
     print("Simulation complete")
 
@@ -122,11 +143,10 @@ if __name__ == "__main__":
     assert pop_manager1 is pop_manager2  # This should be true, as both variables refer to the same instance
         
     if profile:
-        profiler = cProfile.Profile()
-        profiler.enable()
         main()
-        profiler.disable()
-        stats = pstats.Stats(profiler).sort_stats('cumtime')
-        stats.print_stats()
     else:
         main()
+
+# profiler.disable()
+stats = pstats.Stats(profiler).sort_stats('cumtime')
+stats.print_stats()

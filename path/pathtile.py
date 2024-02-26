@@ -12,14 +12,12 @@ class PathTile:
     
     def set_tile(self, tile):
         self.tile = tile
-        return self
     
     def get_total_path_length(self):
         return self.total_path_length
     
     def set_total_path_length(self, total_path_length):
         self.total_path_length = total_path_length
-        return self
     
     def get_tile_path_value(self):
         if self.tile.get_terrain() == Ocean:

@@ -51,11 +51,9 @@ class Pop(Entity):
     
     def wander(self):
         self.state = PopState.WANDERING
-        return self
     
     def set_location(self, location):
         self.location = location
-        return self
     
     def update(self):
         # Update logic for aging, health changes, skill improvements, etc.

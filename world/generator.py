@@ -14,7 +14,7 @@ class WorldGenerator:
         self.seed = seed
 
     def generate_map(self, size, octaves=10, persistence=0.3, lacunarity=3, scale=0.03):
-        map_data = np.zeros(size)
+        map_data = []
         # return map
         
         mapfilepath = "map/" + str(self.seed) + "/" + str(size[0]) + "x" + str(size[1]) + ".map"

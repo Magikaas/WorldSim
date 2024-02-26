@@ -17,11 +17,9 @@ class Terrain():
     
     def set_name(self, name):
         self.name = name
-        return self
     
     def get_colour(self) -> tuple:
         return self.colour
     
     def set_colour(self, colour):
         self.colour = colour
-        return self

@@ -1,20 +1,25 @@
-import numpy as np
+from __future__ import annotations
 
-from helpers.popmanager import PopManager
-from helpers.tilemanager import TileManager
+import random
 
-from obj.worldobj import AppleTree, Cactus
-from obj.worldobj import Animal
+from PIL import Image
 
-from world import WorldGenerator, Tile
 from world.terrain import Terrain, TerrainHeight
 from world.biome import Biome, Temperature, BiomeType
 from world.terraintype import *
 
+from helpers.popmanager import PopManager
+from helpers.chunkmanager import ChunkManager
+
+from obj.worldobj import AppleTree, Cactus
+from obj.worldobj import Animal
+
+from .generator import WorldGenerator
+from .tile import Tile
+from .chunk import Chunk
+
 from render.tilerenderer import TileRenderer
 from render.renderoutput import RenderOutput
-
-from PIL import Image
 
 # Longterm TODO: Make singleton possible with multiple 'Worlds'
 class World:
@@ -35,48 +40,49 @@ class World:
             self.terrain = None
             self.temperature = None
             self.biomes = None
-            self.tile_manager = TileManager(world=self)
+            self.chunk_manager = ChunkManager(world=self)
+            # self.tiles_per_terrain = dict() #TODO
     
     def set_pop_move_manager(self, manager):
         self.pop_move_manager = manager
-        return self
     
     def get_size(self):
         return (self.width, self.height)
     
     def set_height(self, height):
         self.height = height
-        return self
     
     def set_width(self, width):
         self.width = width
-        return self
     
     def get_seed(self):
         return self.seed
     
     def set_seed(self, seed):
         self.seed = seed
-        return self
+    
+    def set_chunk_size(self, size):
+        self.chunk_size = size
+        self.chunk_manager.set_chunk_size(size)
     
     def add_pop_at(self, location):
         # Add pop to tile it should be on, only run this function when adding a new pop, not an existing pop
-        tile = self.get_tile(location[0], location[1])
+        chunk = self.chunk_manager.get_chunk_at(location)
+        tile = chunk.get_tile_manager().get_tile(tuple([coord % self.chunk_size for coord in location]))
         
-        pop = PopManager().generate_pop(location=(location[0], location[1]))
+        pop = PopManager().generate_pop(location=location)
         
         PopManager().add_pop(pop)
         
         tile.add_pop(pop)
-        
-        return self
-    
+        chunk.make_dirty()
+
     def prepare(self):
         # Placeholder for any setup that needs to be done before the simulation starts
         self.generate_terrain()
         self.generate_temperature()
         
-        self.tile_manager.initialize_tiles()
+        self.chunk_manager.initialize_chunks()
         
         self.generate_map()
     
@@ -134,16 +140,16 @@ class World:
     def get_harvestables(self):
         # Placeholder for getting harvestable resources
         return self.trees
-        
+    
     def generate_trees(self):
         for x in range(self.width):
             for y in range(self.height):
                 if self.map[x][y].get_biome().get_name() == 'forest':
-                    if np.random.randint(0, 100) < self.map[x][y].get_biome().get_tree_spawn_chance():
+                    if random.randint(0, 100) < self.map[x][y].get_biome().get_tree_spawn_chance():
                         self.trees.append(AppleTree())
                 elif self.map[x][y].biome == 'desert':
                     # Lower chance of trees, different types
-                    if np.random.randint(0, 100) < self.map[x][y].get_biome().get_tree_spawn_chance():
+                    if random.randint(0, 100) < self.map[x][y].get_biome().get_tree_spawn_chance():
                         self.trees.append(Cactus())
 
     def generate_animals(self):
@@ -155,30 +161,34 @@ class World:
     
     # Generate map 2d array that implements terrain and biome maps and adds trees and animals
     def generate_map(self):
+        chunk_manager = self.chunk_manager
+        
         for x in range(self.width):
             for y in range(self.height):
-                new_tile = Tile(location=(x, y), terrain=self.get_terrain_obj_at(x, y), biome=self.get_biome(self.get_biome_type_at(x, y)))
-                self.tile_manager.add_tile(new_tile)
+                if chunk_manager.has_chunk_at((x, y)) == False:
+                    chunk_manager.add_chunk(Chunk(location=(x, y), size=self.chunk_size))
+                tile_manager = chunk_manager.get_chunk_at((x, y)).tile_manager
+                new_tile = Tile(location=(x, y), chunk_location=(x % self.chunk_size, y % self.chunk_size), terrain=self.get_terrain_obj_at(x, y), biome=self.get_biome(self.get_biome_type_at(x, y)))
+                tile_manager.add_tile(new_tile)
     
-    def get_tile(self, x, y) -> Tile:
-        return self.tile_manager.get_tile((x, y))
-    
-    def set_tile(self, x, y, tile: Tile):
-        self.map[x][y] = tile
-        return self
+    def get_tile(self, location) -> Tile:
+        chunk_manager = self.chunk_manager
+        chunk = chunk_manager.get_chunk(location)
+        tile_manager = chunk.get_tile_manager()
+        return tile_manager.get_tile(tuple([coord % chunk.size for coord in location]))
     
     # Find a tile with the given terrain type
-    def find_tile_with_terrain(self, terrain_type) -> Tile:
+    def find_tiles_with_terrain(self, terrain_type) -> Tile:
+        chunks = self.chunk_manager.get_chunks()
         found_tiles = []
-        for x in range(self.width):
-            for y in range(self.height):
-                if self.map[x][y].terrain == terrain_type:
-                    found_tiles.append(self.map[x][y])
         
-        if len(found_tiles) > 0:
-            return found_tiles[np.random.randint(0, len(found_tiles))]
+        for chunk in chunks:
+            tiles = chunk.get_tile_manager().get_tiles()
+            for tile in tiles:
+                if tile.terrain == terrain_type:
+                    found_tiles.append(tile)
         
-        return None
+        return found_tiles
 
     def update(self):
         # Update the world state for a new simulation step
@@ -193,13 +203,13 @@ class World:
         
         tile_renderer = TileRenderer(None)
         
-        for x in range(self.width):
-            for y in range(self.height):
-                tile = self.get_tile(x, y)
-                
-                if tile.render_me == False:
-                    continue
-                
+        chunks = self.chunk_manager.get_chunks()
+        
+        chunks = self.chunk_manager.get_chunks_to_render()
+        
+        for chunk in chunks:
+            tiles = chunk.get_tile_manager().get_tiles_to_render()
+            for tile in tiles:
                 tile_renderer.set_tile(tile)
                 
                 coordinate_colour = tile_renderer.render()
@@ -207,9 +217,10 @@ class World:
                 if scale != 1:
                     for i in range(scale):
                         for j in range(scale):
-                            img.putpixel((x * scale + i, y * scale + j), coordinate_colour)
+                            img.putpixel((tile.get_location()[0] * scale + i, tile.get_location()[1] * scale + j), coordinate_colour)
                 else:
-                    img.putpixel((x, y), coordinate_colour)
+                    img.putpixel(tile.get_location(), coordinate_colour)
+            chunk.make_dirty()
         
         if output == RenderOutput.FILE:
             if filename is None:
