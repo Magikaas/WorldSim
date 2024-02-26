@@ -1,5 +1,5 @@
 from .entity import Entity
-import numpy as np
+import random
 
 from helpers.popmovemanager import PopMoveManager
 
@@ -25,6 +25,8 @@ class Pop(Entity):
         self.water = water
         self.state = state
         self.speed = speed
+        self.carry_weight = 10
+        self.colour = (random.randint(0,255), random.randint(0,255), random.randint(0,255))
         
         self.wander()
     
@@ -76,13 +78,8 @@ class Pop(Entity):
             
             while xDiff == 0 and yDiff == 0:
                 # Move in a random direction
-                xDiff = np.random.randint(-1 * self.speed, self.speed)
-                if xDiff == 0:
-                    yDiff = np.random.randint(-1 * self.speed, self.speed)
-                
-                # Generate step in random 8-point direction as tuple (-1, 1)/(0, 1) for example, once we reach the edge, make that direction's value 0
-                if self.location[0] + xDiff < 0 or self.location[0] + xDiff >= 10:
-                    xDiff = 0
+                xDiff = random.randint(-1 * self.speed, self.speed)
+                yDiff = random.randint(-1 * self.speed, self.speed)
             
             PopMoveManager().move_pop(self, (xDiff, yDiff))
             
