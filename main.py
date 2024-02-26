@@ -1,28 +1,34 @@
 # Using cProfile
 import cProfile
 import pstats
+import pygame
+import random
 
 # examples/generate_world.py
 from world.world import World
 from helpers.popmanager import PopManager
 from helpers.popmovemanager import PopMoveManager
 
-from helpers import worldhelper
+from render.renderoutput import RenderOutput
 
 import os
-
-import numpy as np
-
-from init import initialize_pops
 
 def run_simulation(world: World, max_iterations=1000, render=False, render_frequency=1000):
     step_nr = 0
     
     sim_seed = world.get_seed()
     
-    world_helper = worldhelper.WorldHelper(world)
+    scale = 1
+    
+    clock = pygame.time.Clock()
+    
+    window = pygame.display.set_mode(world.get_size())
+    
+    image = None
+    
     for iteration in range(max_iterations):
         step_nr += 1
+        clock.tick(60)
         
         if render and step_nr % render_frequency == 0:
             print ("Simulation cycle %d" % step_nr)
@@ -30,17 +36,20 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
             str_seed = str(sim_seed)
             
             # if a folder does not exist, create it
-            filename = "output/" + str_seed + "/simstep_" + step_nr.__str__() + ".png"
+            # filename = "output/" + str_seed + "/" + str(world.width) + "x" + str(world.height) + "_scale_" + str(scale) + "_" + str(step_nr) + ".png"
             
             if os.path.exists("output") == False:
                 os.mkdir("output")
             
             if os.path.exists("output/" + str_seed) == False:
                 os.mkdir("output/" + str_seed)
-            
-            world_helper.set_world(world)
-            
-            world_helper.render_world(filename=filename)
+        
+        image = world.render(img=image, scale=scale, output=RenderOutput.VARIABLE)
+        surface = pygame.image.fromstring(image.tobytes(), image.size, image.mode).convert()
+        
+        window.fill(0)
+        window.blit(surface, surface.get_rect(center = (world.width/2, world.height/2)))
+        pygame.display.flip()
         
         # Update the world state, which includes updating all pops within it
         world.update()
@@ -64,8 +73,8 @@ def world_reached_goal(world: World):
 
 def prep_simulation():
     # Example setup and execution of the simulation
-    world_width = 250  # Example dimension
-    world_height = 250  # Example dimension
+    world_width = 256  # Example dimension
+    world_height = 256  # Example dimension
     initial_pop_count = 10  # Starting number of population units
     seed = 1234  # For deterministic world generation
     
@@ -90,10 +99,8 @@ def prep_simulation():
     
     world.prepare()
     
-    initial_pops = initialize_pops(world, initial_pop_count)
-    
-    for pop in initial_pops:
-        PopManager().add_pop(pop)
+    for i in range(initial_pop_count):
+        world.add_pop_at((random.randint(0, world.width), random.randint(0, world.height)))
 
     return world
 
@@ -102,7 +109,7 @@ def main():
     
     do_render = True # Set to True to render each step of the simulation to an image file
 
-    run_simulation(world, max_iterations=1000, render=do_render, render_frequency=500)
+    run_simulation(world, max_iterations=25, render=do_render, render_frequency=5)
 
     print("Simulation complete")
 

@@ -1,15 +1,18 @@
 import numpy as np
-from world import WorldGenerator, Tile
+
+from helpers.popmanager import PopManager
+from helpers.tilemanager import TileManager
+
 from obj.worldobj import AppleTree, Cactus
 from obj.worldobj import Animal
-from helpers.popmanager import PopManager
-from helpers.popmovemanager import PopMoveManager
 
+from world import WorldGenerator, Tile
 from world.terrain import Terrain, TerrainHeight
 from world.biome import Biome, Temperature, BiomeType
 from world.terraintype import *
 
 from render.tilerenderer import TileRenderer
+from render.renderoutput import RenderOutput
 
 from PIL import Image
 
@@ -32,10 +35,14 @@ class World:
             self.terrain = None
             self.temperature = None
             self.biomes = None
+            self.tile_manager = TileManager(world=self)
     
     def set_pop_move_manager(self, manager):
         self.pop_move_manager = manager
         return self
+    
+    def get_size(self):
+        return (self.width, self.height)
     
     def set_height(self, height):
         self.height = height
@@ -52,10 +59,24 @@ class World:
         self.seed = seed
         return self
     
+    def add_pop_at(self, location):
+        # Add pop to tile it should be on, only run this function when adding a new pop, not an existing pop
+        tile = self.get_tile(location[0], location[1])
+        
+        pop = PopManager().generate_pop(location=(location[0], location[1]))
+        
+        PopManager().add_pop(pop)
+        
+        tile.add_pop(pop)
+        
+        return self
+    
     def prepare(self):
         # Placeholder for any setup that needs to be done before the simulation starts
         self.generate_terrain()
         self.generate_temperature()
+        
+        self.tile_manager.initialize_tiles()
         
         self.generate_map()
     
@@ -134,16 +155,17 @@ class World:
     
     # Generate map 2d array that implements terrain and biome maps and adds trees and animals
     def generate_map(self):
-        map = []
         for x in range(self.width):
-            row = []
             for y in range(self.height):
-                row.append(Tile(location=(x, y), terrain=self.get_terrain_obj_at(x, y), biome=self.get_biome(self.get_biome_type_at(x, y))))
-            map.append(row)
-        self.map = map
+                new_tile = Tile(location=(x, y), terrain=self.get_terrain_obj_at(x, y), biome=self.get_biome(self.get_biome_type_at(x, y)))
+                self.tile_manager.add_tile(new_tile)
     
     def get_tile(self, x, y) -> Tile:
-        return self.map[x][y]
+        return self.tile_manager.get_tile((x, y))
+    
+    def set_tile(self, x, y, tile: Tile):
+        self.map[x][y] = tile
+        return self
     
     # Find a tile with the given terrain type
     def find_tile_with_terrain(self, terrain_type) -> Tile:
@@ -165,18 +187,20 @@ class World:
 
         # Optionally, update resources, weather, or other global factors
     
-    def render(self, filename=None, scale=1):
-        # Render the world state, pixel by pixel, using PIL python library
-        if filename is None:
-            filename = self.seed + ".png"
+    def render(self, img=None, filename=None, scale=1, output=RenderOutput.FILE, screen=None):
+        if img is None:
+            img = Image.new(mode="RGB", size=(self.width * scale, self.height * scale), color="white")
         
-        img = Image.new(mode="RGB", size=(self.width * scale, self.height * scale), color="white")
+        tile_renderer = TileRenderer(None)
         
         for x in range(self.width):
             for y in range(self.height):
                 tile = self.get_tile(x, y)
                 
-                tile_renderer = TileRenderer(tile)
+                if tile.render_me == False:
+                    continue
+                
+                tile_renderer.set_tile(tile)
                 
                 coordinate_colour = tile_renderer.render()
                 
@@ -187,4 +211,13 @@ class World:
                 else:
                     img.putpixel((x, y), coordinate_colour)
         
-        img.save(filename, "PNG")
+        if output == RenderOutput.FILE:
+            if filename is None:
+                filename = self.seed + ".png"
+            img.save(filename, "PNG")
+            return
+        elif output == RenderOutput.DISPLAY:
+            img.show()
+            return
+        elif output == RenderOutput.VARIABLE:
+            return img

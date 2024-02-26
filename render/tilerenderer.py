@@ -9,6 +9,9 @@ class TileRenderer():
     def render(self):
         tile = self.get_tile()
         
+        if tile.has_colour_override():
+            return tile.get_colour_override()
+        
         pops = tile.get_pops()
         animals = tile.get_animals()
         
@@ -23,20 +26,31 @@ class TileRenderer():
         else:
             coordinate_colour = self.get_render_info()
         
+        tile.mark_rendered()
+        
         return coordinate_colour
     
     def get_render_info(self) -> tuple:
         """Prepare and return information needed for rendering this tile."""
         # This method can be expanded based on what information the renderer needs
         # Example: Return the most dominant feature of the tile for rendering
-        if len(self.get_tile().get_trees()) > 0:
+        if self.count_trees() > 0:
             return (0, 255, 0)
-        elif len(self.get_tile().get_animals()) > 0:
+        elif self.count_animals() > 0:
             return (165, 42, 42)
-        elif len(self.get_tile().get_pops()) > 0:
+        elif self.count_pops() > 0:
             return (128, 0, 128)
         
         return self.get_terrain_colour()
+
+    def count_pops(self):
+        return len(self.get_tile().get_pops())
+
+    def count_animals(self):
+        return len(self.get_tile().get_animals())
+
+    def count_trees(self):
+        return len(self.get_tile().get_trees())
     
     def get_terrain_colour(self) -> tuple:
         # Combine the terrain and biome colours

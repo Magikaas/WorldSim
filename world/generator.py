@@ -17,10 +17,13 @@ class WorldGenerator:
         map_data = np.zeros(size)
         # return map
         
-        mapfilepath = "map/" + str(self.seed) + ".map"
+        mapfilepath = "map/" + str(self.seed) + "/" + str(size[0]) + "x" + str(size[1]) + ".map"
         
         if os.path.exists("map") == False:
             os.mkdir("map")
+        
+        if os.path.exists("map/" + str(self.seed)) == False:
+            os.mkdir("map/" + str(self.seed))
         
         if os.path.exists(mapfilepath) == True:
             with open(mapfilepath, 'r') as reader:

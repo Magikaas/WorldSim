@@ -18,6 +18,10 @@ class PopMoveManager:
         return self
     
     def move_pop(self, pop, direction: tuple):
+        # print("Moving pop %s to %s" % (pop.location, direction))
+        past_tile = self.world.get_tile(pop.location[0], pop.location[1])
+        
+        past_tile.remove_pop(pop)
         
         x, y = pop.location[0], pop.location[1]
         
@@ -36,4 +40,11 @@ class PopMoveManager:
         loc = (x, y)
         
         pop.set_location(loc)
+        
+        tile = self.world.get_tile(x, y)
+        
+        tile.add_pop(pop)
+        
+        tile.set_colour_override(pop.colour)
+        
         return self
