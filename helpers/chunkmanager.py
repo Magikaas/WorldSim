@@ -49,8 +49,8 @@ class ChunkManager:
             for chunk in chunk_row:
                 if chunk.dirty:
                     chunks.append(chunk)
-                else:
-                    print("Skipped chunk ", chunk.get_location())
+                # else:
+                #     print("Skipped chunk ", chunk.get_location())
         return chunks
     
     def get_chunk(self, location) -> Chunk:

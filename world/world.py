@@ -220,7 +220,8 @@ class World:
                             img.putpixel((tile.get_location()[0] * scale + i, tile.get_location()[1] * scale + j), coordinate_colour)
                 else:
                     img.putpixel(tile.get_location(), coordinate_colour)
-            chunk.make_dirty()
+                tile.mark_rendered()
+            chunk.mark_rendered()
         
         if output == RenderOutput.FILE:
             if filename is None:

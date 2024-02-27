@@ -39,7 +39,7 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
     for iteration in range(max_iterations):
         if render:
             pygame.event.get()
-            clock.tick(60)
+            # clock.tick(60)
         
         step_nr += 1
         
@@ -141,7 +141,8 @@ if __name__ == "__main__":
     pop_manager2 = PopManager()
 
     assert pop_manager1 is pop_manager2  # This should be true, as both variables refer to the same instance
-        
+    
+    # profiler.enable()
     if profile:
         main()
     else:

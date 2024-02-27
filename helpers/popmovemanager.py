@@ -18,6 +18,8 @@ class PopMoveManager:
     
     def move_pop(self, pop, direction: tuple):
         # print("Moving pop %s to %s" % (pop.location, direction))
+        past_chunk = self.world.chunk_manager.get_chunk_at(pop.location)
+        past_chunk.make_dirty()
         past_tile = self.world.get_tile(pop.location)
         
         past_tile.remove_pop(pop)
