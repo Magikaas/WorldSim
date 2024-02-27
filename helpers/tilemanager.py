@@ -23,7 +23,7 @@ class TileManager:
             for y in range(self.chunk.get_size()):
                 chunk_x = self.chunk.location[0] * self.chunk.size + x
                 chunk_y = self.chunk.location[1] * self.chunk.size + y
-                self.tiles.append(Tile(location=(chunk_x, chunk_y), chunk_location=(x, y), terrain=None, biome=None))
+                self.tiles.append(Tile(location=(chunk_x, chunk_y), local_coordinates=(x, y), terrain=None, biome=None))
     
     def add_tile(self, tile: Tile):
         if len(self.tiles) < tile.chunk_location[0] or len(self.tiles[0]) < tile.chunk_location[1]:

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import random
-
-from PIL import Image
+import pygame
 
 from world.terrain import Terrain, TerrainHeight
 from world.biome import Biome, Temperature, BiomeType
@@ -168,7 +167,7 @@ class World:
                 if chunk_manager.has_chunk_at((x, y)) == False:
                     chunk_manager.add_chunk(Chunk(location=(x, y), size=self.chunk_size))
                 tile_manager = chunk_manager.get_chunk_at((x, y)).tile_manager
-                new_tile = Tile(location=(x, y), chunk_location=(x % self.chunk_size, y % self.chunk_size), terrain=self.get_terrain_obj_at(x, y), biome=self.get_biome(self.get_biome_type_at(x, y)))
+                new_tile = Tile(location=(x, y), local_coordinates=(x % self.chunk_size, y % self.chunk_size), terrain=self.get_terrain_obj_at(x, y), biome=self.get_biome(self.get_biome_type_at(x, y)))
                 tile_manager.add_tile(new_tile)
     
     def get_tile(self, location) -> Tile:
@@ -189,22 +188,21 @@ class World:
                     found_tiles.append(tile)
         
         return found_tiles
-
+    
     def update(self):
         # Update the world state for a new simulation step
-        for pop in PopManager().get_pops():
-            pop.update()
+        
+        # Trigger updates for all pops in the world
+        PopManager().update()
 
         # Optionally, update resources, weather, or other global factors
+        pass
     
-    def render(self, img=None, filename=None, scale=1, output=RenderOutput.FILE, screen=None):
-        if img is None:
-            img = Image.new(mode="RGB", size=(self.width * scale, self.height * scale), color="white")
+    def render(self, surface, filename=None, scale=1, output=RenderOutput.FILE, screen=None):
         
         tile_renderer = TileRenderer(None)
         
         chunks = self.chunk_manager.get_chunks()
-        
         chunks = self.chunk_manager.get_chunks_to_render()
         
         for chunk in chunks:
@@ -214,22 +212,24 @@ class World:
                 
                 coordinate_colour = tile_renderer.render()
                 
-                if scale != 1:
-                    for i in range(scale):
-                        for j in range(scale):
-                            img.putpixel((tile.get_location()[0] * scale + i, tile.get_location()[1] * scale + j), coordinate_colour)
-                else:
-                    img.putpixel(tile.get_location(), coordinate_colour)
+                x = (chunk.get_location() + tile.get_location()[0]) * scale
+                y = (chunk.get_location() + tile.get_location()[1]) * scale
+                coordinate = (x, y)
+                size = (scale, scale)
+                rect = (coordinate, size)
+                
+                c = pygame.color.Color(coordinate_colour)
+                
+                pygame.draw.rect(surface=surface, color=c, rect=rect)
+                
                 tile.mark_rendered()
             chunk.mark_rendered()
         
         if output == RenderOutput.FILE:
             if filename is None:
                 filename = self.seed + ".png"
-            img.save(filename, "PNG")
-            return
-        elif output == RenderOutput.DISPLAY:
-            img.show()
+            
+            pygame.image.save(surface=surface, filename=filename)
             return
         elif output == RenderOutput.VARIABLE:
-            return img
+            return surface

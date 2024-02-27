@@ -1,3 +1,10 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import obj.worldobj.worldobjecttype.pop
+
 class PopMoveManager:
     _instance = None
 
@@ -16,7 +23,7 @@ class PopMoveManager:
     def set_world(self, world):
         self.world = world
     
-    def move_pop(self, pop, direction: tuple):
+    def move_pop(self, pop: obj.worldobj.worldobjecttype.pop.Pop, direction: tuple):
         # print("Moving pop %s to %s" % (pop.location, direction))
         past_chunk = self.world.chunk_manager.get_chunk_at(pop.location)
         past_chunk.make_dirty()

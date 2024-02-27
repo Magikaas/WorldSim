@@ -1,11 +1,10 @@
-import numpy as np
-
-from world.tile import Tile
-
 from helpers.tilemanager import TileManager
+from observers import Subject, RenderableObserver
 
-class Chunk:
+class Chunk(Subject, RenderableObserver):
     def __init__(self, location, size=16):
+        super().__init__()
+        
         self.location = location
         self.dirty = True # True if the chunk has been modified since the last time it was rendered
         self.size = size

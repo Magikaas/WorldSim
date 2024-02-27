@@ -13,15 +13,12 @@ from render.renderoutput import RenderOutput
 
 import os
 
-profiler = cProfile.Profile()
-# profiler.enable()
-
 def run_simulation(world: World, max_iterations=1000, render=False, render_frequency=1000):
     step_nr = 0
     
     sim_seed = world.get_seed()
     
-    scale = 5
+    scale = 1
     
     if render:
         clock = pygame.time.Clock()
@@ -33,9 +30,8 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
         
         window = pygame.display.set_mode(world_size)
         
-        image = None
+        surface = pygame.Surface(world_size)
     
-    profiler.enable()
     for iteration in range(max_iterations):
         if render:
             pygame.event.get()
@@ -44,7 +40,7 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
         step_nr += 1
         
         if render and step_nr % render_frequency == 0:
-            print ("Simulation cycle %d" % step_nr)
+            # print ("Simulation cycle %d" % step_nr)
             
             str_seed = str(sim_seed)
             
@@ -58,16 +54,13 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
                 os.mkdir("output/" + str_seed)
         
         if render:
-            if image is None:
-                profiler.disable()
-            image = world.render(img=image, scale=scale, output=RenderOutput.VARIABLE)
-            if image is not None:
-                profiler.enable()
+            surface = world.render(surface=surface, scale=scale, output=RenderOutput.VARIABLE)
             
-            surface = pygame.image.fromstring(image.tobytes(), image.size, image.mode).convert()
+            screen_width = world.width * scale / 2
+            screen_height = world.height * scale / 2
             
             window.fill(0)
-            window.blit(surface, surface.get_rect(center = (world.width*scale/2, world.height*scale/2)))
+            window.blit(surface, surface.get_rect(center = (screen_width, screen_height)))
             pygame.display.flip()
         
         # Update the world state, which includes updating all pops within it
@@ -80,7 +73,6 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
         # Example: You could add new pops or change the world based on specific conditions
         # if iteration % 100 == 0:
             # world.add_pop(new_pop)
-    profiler.disable()
 
 def check_end_conditions(world):
     return len(PopManager().get_pops()) == 0 or world_reached_goal(world)
@@ -113,6 +105,9 @@ def prep_simulation():
     
     pop_move_manager.set_world(world)
     
+    for i in range(initial_pop_count):
+        world
+    
     world.set_pop_move_manager(pop_move_manager)
     
     world.set_height(world_height)
@@ -135,19 +130,19 @@ def main():
     print("Simulation complete")
 
 profile = True # Profile the code using cProfile
-
 if __name__ == "__main__":
     pop_manager1 = PopManager()
     pop_manager2 = PopManager()
 
     assert pop_manager1 is pop_manager2  # This should be true, as both variables refer to the same instance
     
-    # profiler.enable()
     if profile:
+        profiler = cProfile.Profile()
+        profiler.enable()
         main()
+        profiler.disable()
+        stats = pstats.Stats(profiler).sort_stats('cumtime')
+        stats.print_stats()
     else:
         main()
 
-# profiler.disable()
-stats = pstats.Stats(profiler).sort_stats('cumtime')
-stats.print_stats()

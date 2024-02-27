@@ -1,3 +1,4 @@
 pynoise
 numpy
 pillow
+pygame-ce

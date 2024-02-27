@@ -15,6 +15,9 @@ class PopManager():
             self.pops = []
             self.initialized = True
     
+    def get_pops(self) -> List[Pop]:
+        return self.pops
+    
     def add_pop_move_manager(self, pop_move_manager: PopMoveManager):
         self.pop_move_manager = pop_move_manager
     
@@ -45,5 +48,5 @@ class PopManager():
         return pops
     
     def update(self):
-        for pop in self.pops:
+        for pop in self.get_pops():
             pop.update()
