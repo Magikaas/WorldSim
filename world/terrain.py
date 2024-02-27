@@ -8,9 +8,10 @@ class TerrainHeight:
     MOUNTAIN_PEAK = 1
 
 class Terrain():
-    def __init__(self, name, colour):
+    def __init__(self, name, colour, speed_multiplier=1.0):
         self.name = name
         self.colour = colour
+        self.speed_multiplier = speed_multiplier
     
     def get_name(self):
         return self.name
@@ -23,3 +24,9 @@ class Terrain():
     
     def set_colour(self, colour):
         self.colour = colour
+    
+    def get_speed_multiplier(self):
+        return self.speed_multiplier
+    
+    def set_speed_multiplier(self, speed_multiplier):
+        self.speed_multiplier = speed_multiplier
