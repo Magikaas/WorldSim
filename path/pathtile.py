@@ -1,9 +1,15 @@
-from world.tile import Tile
-from world.biome import Biome, BiomeType
+from __future__ import annotations
+
 from world.terraintype import *
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import world
+    import world.tile
+
 class PathTile:
-    def __init__(self, tile: Tile):
+    def __init__(self, tile: world.tile.Tile):
         self.tile = tile
         self.total_path_length = 0
     

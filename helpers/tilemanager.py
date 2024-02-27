@@ -26,10 +26,10 @@ class TileManager:
                 self.tiles.append(Tile(location=(chunk_x, chunk_y), local_coordinates=(x, y), terrain=None, biome=None))
     
     def add_tile(self, tile: Tile):
-        if len(self.tiles) < tile.chunk_location[0] or len(self.tiles[0]) < tile.chunk_location[1]:
-            print("Tile	location out of bounds:", tile.get_location()[0], tile.get_location()[1])
+        if len(self.tiles) < tile.local_coordinates[0] or len(self.tiles[0]) < tile.local_coordinates[1]:
+            print("Tile	location out of bounds:", tile.get_local_coordinates()[0], tile.get_local_coordinates()[1])
             return
-        self.tiles[tile.chunk_location[0]][tile.chunk_location[1]] = tile
+        self.tiles[tile.local_coordinates[0]][tile.local_coordinates[1]] = tile
     
     def remove_tile(self, tile: Tile):
         self.tiles.remove(tile)

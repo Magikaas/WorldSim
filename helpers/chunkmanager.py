@@ -54,4 +54,6 @@ class ChunkManager:
         return chunks
     
     def get_chunk(self, location) -> Chunk:
-        return self.chunks[int(location[0] / self.chunk_size)][int(location[1] / self.chunk_size)]
+        chunk_x = int(location[0] / self.chunk_size) % len(self.chunks)
+        chunk_y = int(location[1] / self.chunk_size) % len(self.chunks[chunk_x])
+        return self.chunks[chunk_x][chunk_y]

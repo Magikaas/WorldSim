@@ -2,21 +2,20 @@ from __future__ import annotations
 
 from typing import List
 
+from obj.worldobj.worldobjecttype.tree import Tree
+from obj.worldobj.worldobjecttype.pop import Pop
+
 from .biome import Biome
 from .terrain import Terrain
-
-from obj.worldobj.animal import Animal
-from obj.worldobj.worldobjecttype.pop import Pop
-from obj.worldobj.worldobjecttype.tree import Tree
 
 from observers import Subject
 
 class Tile(Subject):
-    def __init__(self, location, local_coordinates, terrain, biome):
+    def __init__(self, location: tuple, local_coordinates: tuple, terrain: Terrain, biome: Biome):
         super().__init__()
         
         self.location = location
-        self.chunk_location = local_coordinates
+        self.local_coordinates = local_coordinates
         self.terrain = terrain
         self.biome = biome
         self.pops = []
@@ -31,14 +30,14 @@ class Tile(Subject):
     def mark_rendered(self):
         self.dirty = False
     
-    def get_location(self):
-        return self.location
+    def get_local_coordinates(self):
+        return self.local_coordinates
     
-    def set_location(self, location) -> tuple:
-        self.location = location
+    def set_local_coordinates(self, local_coordinates) -> tuple:
+        self.local_coordinates = local_coordinates
         self.notify_observers()
     
-    def get_pops(self) -> List[Pop]:
+    def get_pops(self) -> List[obj.worldobj.worldobjecttype.pop.Pop]:
         return self.pops
     
     def add_pop(self, pop):
@@ -47,6 +46,7 @@ class Tile(Subject):
         
         if pop not in self.pops:
             self.pops.append(pop)
+            self.set_colour_override(pop.colour)
         else:
             print("Pop %s already exists in tile %s" % (pop, self))
     

@@ -1,6 +1,6 @@
 class TerrainHeight:
     OCEAN = -1
-    SHALLOW_COASTAL_WATER = -0.5
+    SHALLOW_COASTAL_WATER = -0.3
     RIVER = -0.1
     LAND = 0.1
     HILLS = 0.6
@@ -8,10 +8,11 @@ class TerrainHeight:
     MOUNTAIN_PEAK = 1
 
 class Terrain():
-    def __init__(self, name, colour, speed_multiplier=1.0):
+    def __init__(self, name, colour, speed_multiplier=1.0, fertility=1):
         self.name = name
         self.colour = colour
         self.speed_multiplier = speed_multiplier
+        self.fertility = fertility
     
     def get_name(self):
         return self.name

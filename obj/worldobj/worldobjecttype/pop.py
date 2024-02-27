@@ -1,7 +1,11 @@
-from .entity import Entity
+from __future__ import annotations
+
 import random
 
 from helpers.popmovemanager import PopMoveManager
+
+from path.popmove import PopMove
+from .entity import Entity
 
 class PopState:
     IDLE = 0
@@ -16,8 +20,8 @@ class PopState:
     WANDERING = 256
 
 class Pop(Entity):
-    def __init__(self, id, name, location, age=0, role='worker', health=100, food=100, water=100, state=PopState.IDLE, speed=1):
-        super().__init__(id, name, location)
+    def __init__(self, id, name, location, world, age=0, role='worker', health=100, food=100, water=100, state=PopState.IDLE, speed=1):
+        super().__init__(id, name, location, world)
         self.role = role
         self.age = age
         self.health = health
@@ -29,6 +33,9 @@ class Pop(Entity):
         self.colour = (random.randint(0,255), random.randint(0,255), random.randint(0,255))
         
         self.wander()
+    
+    def move_to_world(self, world):
+        self.world = world
     
     def getStates(self):
         # Pop state is a bitmap of states
@@ -55,6 +62,9 @@ class Pop(Entity):
     def set_location(self, location):
         self.location = location
     
+    def has_pending_move(self):
+        return PopMoveManager().get_move_for_pop(self) is not None
+    
     def update(self):
         # Update logic for aging, health changes, skill improvements, etc.
         self.age += 1
@@ -68,18 +78,22 @@ class Pop(Entity):
             self.state = PopState.DEAD
             return
         
-        # self.determineNextTask()
         
-        if self.state == PopState.WANDERING:
-            xDiff = 0
-            yDiff = 0
-            
-            while xDiff == 0 and yDiff == 0:
-                # Move in a random direction
-                xDiff = random.randint(-1 * self.speed, self.speed)
-                yDiff = random.randint(-1 * self.speed, self.speed)
-            
-            PopMoveManager().move_pop(self, (xDiff, yDiff))
+        if self.has_pending_move() == False:
+            if self.state == PopState.WANDERING:
+                xDiff = 0
+                yDiff = 0
+                
+                while xDiff == 0 and yDiff == 0:
+                    # Move in a random direction
+                    xDiff = random.randint(-1 * self.speed, self.speed)
+                    yDiff = random.randint(-1 * self.speed, self.speed)
+                
+                destination_coords = (self.location[0] + xDiff, self.location[1] + yDiff)
+                destination_tile = self.world.get_tile(location=destination_coords)
+                
+                popmove = PopMove(self, destination_tile=destination_tile)
+                PopMoveManager().move_pop(popmove=popmove)
             
         
         # Update logic for the pop's current state

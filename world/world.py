@@ -7,10 +7,12 @@ from world.terrain import Terrain, TerrainHeight
 from world.biome import Biome, Temperature, BiomeType
 from world.terraintype import *
 
-from helpers.popmanager import PopManager
 from helpers.chunkmanager import ChunkManager
+from helpers.popmovemanager import PopMoveManager
+from helpers.popmanager import PopManager
 
-from obj.worldobj import AppleTree, Cactus
+from obj.worldobj.appletree import AppleTree
+from obj.worldobj.cactus import Cactus
 from obj.worldobj import Animal
 
 from .generator import WorldGenerator
@@ -20,8 +22,10 @@ from .chunk import Chunk
 from render.tilerenderer import TileRenderer
 from render.renderoutput import RenderOutput
 
+from observers import RenderableObserver
+
 # Longterm TODO: Make singleton possible with multiple 'Worlds'
-class World:
+class World(RenderableObserver):
     _instance = None
 
     def __new__(cls, *args, **kwargs):
@@ -69,7 +73,7 @@ class World:
         chunk = self.chunk_manager.get_chunk_at(location)
         tile = chunk.get_tile_manager().get_tile(tuple([coord % self.chunk_size for coord in location]))
         
-        pop = PopManager().generate_pop(location=location)
+        pop = PopManager().generate_pop(location=location, world=self)
         
         PopManager().add_pop(pop)
         
@@ -164,10 +168,16 @@ class World:
         
         for x in range(self.width):
             for y in range(self.height):
+                chunk = None
                 if chunk_manager.has_chunk_at((x, y)) == False:
-                    chunk_manager.add_chunk(Chunk(location=(x, y), size=self.chunk_size))
-                tile_manager = chunk_manager.get_chunk_at((x, y)).tile_manager
+                    chunk = Chunk(location=(x, y), size=self.chunk_size)
+                    chunk.register_observer(self)
+                    chunk_manager.add_chunk(chunk)
+                else:
+                    chunk = chunk_manager.get_chunk_at((x, y))
+                tile_manager = chunk.tile_manager
                 new_tile = Tile(location=(x, y), local_coordinates=(x % self.chunk_size, y % self.chunk_size), terrain=self.get_terrain_obj_at(x, y), biome=self.get_biome(self.get_biome_type_at(x, y)))
+                new_tile.register_observer(chunk)
                 tile_manager.add_tile(new_tile)
     
     def get_tile(self, location) -> Tile:
@@ -194,6 +204,8 @@ class World:
         
         # Trigger updates for all pops in the world
         PopManager().update()
+        
+        PopMoveManager().handle_moves()
 
         # Optionally, update resources, weather, or other global factors
         pass
@@ -212,8 +224,8 @@ class World:
                 
                 coordinate_colour = tile_renderer.render()
                 
-                x = (chunk.get_location() + tile.get_location()[0]) * scale
-                y = (chunk.get_location() + tile.get_location()[1]) * scale
+                x = (chunk.get_location()[0] + tile.get_local_coordinates()[0]) * scale
+                y = (chunk.get_location()[1] + tile.get_local_coordinates()[1]) * scale
                 coordinate = (x, y)
                 size = (scale, scale)
                 rect = (coordinate, size)
@@ -233,3 +245,7 @@ class World:
             return
         elif output == RenderOutput.VARIABLE:
             return surface
+    
+    # Observer notify
+    def notify(self, subject):
+        subject.make_dirty()

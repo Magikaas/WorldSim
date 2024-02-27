@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from typing import List
-from obj.worldobj.worldobjecttype.pop import Pop
 from .popmovemanager import PopMoveManager
+from obj.worldobj.worldobjecttype.pop import Pop
 
 class PopManager():
     _instance = None
@@ -21,11 +23,11 @@ class PopManager():
     def add_pop_move_manager(self, pop_move_manager: PopMoveManager):
         self.pop_move_manager = pop_move_manager
     
-    def generate_pop(self, name=None, location=(0, 0)):
+    def generate_pop(self, name=None, location=(0, 0), world=None):
         if name is None:
             name = "Pop %s" % len(self.pops)
         
-        pop = Pop(id=len(self.pops), name=name, location=location)
+        pop = Pop(id=len(self.pops), name=name, location=location, world=world)
         return pop
     
     def add_pop(self, pop: Pop):

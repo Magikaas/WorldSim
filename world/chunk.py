@@ -28,3 +28,7 @@ class Chunk(Subject, RenderableObserver):
     
     def make_dirty(self):
         self.dirty = True
+    
+    def notify(self, subject):
+        self.notify_observers()
+        subject.make_dirty()

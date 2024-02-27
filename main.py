@@ -18,7 +18,7 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
     
     sim_seed = world.get_seed()
     
-    scale = 1
+    scale = 5
     
     if render:
         clock = pygame.time.Clock()
@@ -39,19 +39,19 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
         
         step_nr += 1
         
-        if render and step_nr % render_frequency == 0:
-            # print ("Simulation cycle %d" % step_nr)
+        # if render and step_nr % render_frequency == 0:
+        #     # print ("Simulation cycle %d" % step_nr)
             
-            str_seed = str(sim_seed)
+        #     str_seed = str(sim_seed)
             
-            # if a folder does not exist, create it
-            # filename = "output/" + str_seed + "/" + str(world.width) + "x" + str(world.height) + "_scale_" + str(scale) + "_" + str(step_nr) + ".png"
+        #     # if a folder does not exist, create it
+        #     # filename = "output/" + str_seed + "/" + str(world.width) + "x" + str(world.height) + "_scale_" + str(scale) + "_" + str(step_nr) + ".png"
             
-            if os.path.exists("output") == False:
-                os.mkdir("output")
+        #     if os.path.exists("output") == False:
+        #         os.mkdir("output")
             
-            if os.path.exists("output/" + str_seed) == False:
-                os.mkdir("output/" + str_seed)
+        #     if os.path.exists("output/" + str_seed) == False:
+        #         os.mkdir("output/" + str_seed)
         
         if render:
             surface = world.render(surface=surface, scale=scale, output=RenderOutput.VARIABLE)
@@ -105,9 +105,6 @@ def prep_simulation():
     
     pop_move_manager.set_world(world)
     
-    for i in range(initial_pop_count):
-        world
-    
     world.set_pop_move_manager(pop_move_manager)
     
     world.set_height(world_height)
@@ -125,7 +122,7 @@ def main():
     
     do_render = True # Set to True to render each step of the simulation to an image file
 
-    run_simulation(world, max_iterations=1000, render=do_render, render_frequency=25)
+    run_simulation(world, max_iterations=50000, render=do_render, render_frequency=25)
 
     print("Simulation complete")
 
