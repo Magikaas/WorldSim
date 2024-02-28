@@ -1,19 +1,15 @@
-class WORLD_OBJECT_TYPE:
+from enum import Enum
+
+class WORLD_OBJECT_TYPE(Enum):
     ITEM = 0
     CONTAINER = 1
     BUILDING = 2
     ANIMAL = 3
-    TREE = 4
-    RESOURCE = 5
+    RESOURCE = 4
+    RESOURCE_NODE = 5
 
-class WorldObject():
-    def __init__(self, name, description):
+class WorldObject:
+    def __init__(self, name, description, object_type: WORLD_OBJECT_TYPE):
         self.name = name
         self.description = description
-        # self.location = location
-        # self.weight = weight
-        # self.is_open = False
-        # self.contents = []
-        # self.is_container = False
-        # self.is_locked = False
-        # self.is_locked_with_key = False
+        self.object_type = object_type

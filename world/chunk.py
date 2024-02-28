@@ -18,7 +18,7 @@ class Chunk(Subject, RenderableObserver):
         return self.location
     
     def get_tiles(self):
-        return self.tiles
+        return self.tile_manager.get_tiles()
     
     def is_dirty(self):
         return self.dirty
@@ -32,3 +32,14 @@ class Chunk(Subject, RenderableObserver):
     def notify(self, subject):
         self.notify_observers()
         subject.make_dirty()
+    
+    def get_terrains(self):
+        tiles = self.get_tiles()
+        
+        terrains = []
+        
+        for tile in tiles:
+            if terrains.count(tile.get_terrain()) == 0:
+                terrains.append(tile.get_terrain())
+        
+        return terrains

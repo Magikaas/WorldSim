@@ -1,47 +1,51 @@
 from world.tile import Tile
-from obj.worldobj.worldobjecttype.tree import Tree
-from obj.worldobj.worldobjecttype.pop import Pop
+
+from render.rendertype import MapRenderType
 
 class TileRenderer():
     def __init__(self, tile: Tile):
         self.tile = tile
     
-    def render(self):
+    def render(self, map_render_type=MapRenderType.ALL):
         tile = self.get_tile()
         
         if tile.has_colour_override():
             return tile.get_colour_override()
         
-        pops = tile.get_pops()
-        animals = tile.get_animals()
+        num_pops = len(tile.get_pops())
+        num_animals = len(tile.get_animals())
+        num_resourcenodes = len(tile.get_resourcenodes())
         
         coordinate_colour = None
         
-        if len(pops) > 0:
-            # Render the pop as a purple square
-            coordinate_colour = (255, 0, 255)
-        elif len(animals) > 0:
-            # Render the animal as a brown square
-            coordinate_colour = (139, 69, 19)
-        else:
-            coordinate_colour = self.get_render_info()
+        # Determine what to render based off MapRenderType enum
+        for tile_render_type in MapRenderType:
+            if map_render_type.value & tile_render_type.value:
+                if self.should_render(map_render_type, MapRenderType.POPS) and num_pops > 0:
+                    # Render the pop as a purple square
+                    coordinate_colour = (255, 0, 255)
+                    break
+                elif self.should_render(map_render_type, MapRenderType.ANIMALS) and num_animals > 0:
+                    # Render the animal as a brown square
+                    coordinate_colour = (139, 69, 19)
+                    break
+                elif self.should_render(map_render_type, MapRenderType.RESOURCES) and num_resourcenodes > 0:
+                    # Render the resource node as a bright pink square
+                    coordinate_colour = (255, 105, 180)
+                    break
+                elif self.should_render(map_render_type, MapRenderType.TERRAIN):
+                    coordinate_colour = self.get_terrain_colour()
+                    break
+                else:
+                    coordinate_colour = (0, 0, 0)
+                    break
         
         tile.mark_rendered()
         
         return coordinate_colour
     
-    def get_render_info(self) -> tuple:
-        """Prepare and return information needed for rendering this tile."""
-        # This method can be expanded based on what information the renderer needs
-        # Example: Return the most dominant feature of the tile for rendering
-        if self.count_trees() > 0:
-            return (0, 255, 0)
-        elif self.count_animals() > 0:
-            return (165, 42, 42)
-        elif self.count_pops() > 0:
-            return (128, 0, 128)
-        
-        return self.get_terrain_colour()
+    def should_render(self, render_options, option) -> bool:
+        return render_options & option
 
     def count_pops(self):
         return len(self.get_tile().get_pops())
@@ -49,8 +53,8 @@ class TileRenderer():
     def count_animals(self):
         return len(self.get_tile().get_animals())
 
-    def count_trees(self):
-        return len(self.get_tile().get_trees())
+    def count_resourcenodes(self):
+        return len(self.get_tile().get_resourcenodes())
     
     def get_terrain_colour(self) -> tuple:
         # Combine the terrain and biome colours

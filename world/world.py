@@ -15,12 +15,13 @@ from obj.worldobj.appletree import AppleTree
 from obj.worldobj.cactus import Cactus
 from obj.worldobj import Animal
 
-from .generator import WorldGenerator
+from .generator import MapGenerator
 from .tile import Tile
 from .chunk import Chunk
 
 from render.tilerenderer import TileRenderer
 from render.renderoutput import RenderOutput
+from render.rendertype import MapRenderType
 
 from observers import RenderableObserver
 
@@ -88,15 +89,16 @@ class World(RenderableObserver):
         self.chunk_manager.initialize_chunks()
         
         self.generate_map()
+        self.generate_resourcenodes()
     
     def generate_terrain(self):
-        self.terrain = WorldGenerator(seed=self.seed).generate_map((self.height, self.width))
+        self.terrain = MapGenerator(seed=self.seed).generate_map((self.height, self.width))
 
     def generate_temperature(self):
-        self.biomes = WorldGenerator(seed=self.seed + 1).generate_map((self.height, self.width))
+        self.biomes = MapGenerator(seed=self.seed + 1).generate_map((self.height, self.width))
     
     def get_terrain_obj_at(self, x, y) -> Terrain:
-        terrain_value = self.terrain[x * self.width + y]
+        terrain_value = self.terrain[y * self.width + x]
         
         if terrain_value < TerrainHeight.SHALLOW_COASTAL_WATER:
             return Ocean()
@@ -115,8 +117,8 @@ class World(RenderableObserver):
             return Unland()
     
     def get_biome_type_at(self, x, y) -> Biome:
-        land_height = self.terrain[self.width * x + y]
-        temperature = self.biomes[self.width * x + y]
+        land_height = self.terrain[y * self.width + x]
+        temperature = self.biomes[y * self.width + x]
         
         if land_height > TerrainHeight.LAND and temperature < Temperature.COLD:
             return BiomeType.ARCTIC
@@ -144,16 +146,42 @@ class World(RenderableObserver):
         # Placeholder for getting harvestable resources
         return self.trees
     
-    def generate_trees(self):
-        for x in range(self.width):
-            for y in range(self.height):
-                if self.map[x][y].get_biome().get_name() == 'forest':
-                    if random.randint(0, 100) < self.map[x][y].get_biome().get_tree_spawn_chance():
-                        self.trees.append(AppleTree())
-                elif self.map[x][y].biome == 'desert':
-                    # Lower chance of trees, different types
-                    if random.randint(0, 100) < self.map[x][y].get_biome().get_tree_spawn_chance():
-                        self.trees.append(Cactus())
+    def generate_resourcenodes(self):
+        chunks = self.chunk_manager.get_chunks()
+        
+        resource_density_map = MapGenerator(seed=self.seed + 2).generate_map((len(chunks), len(chunks[0])), octaves=5, name="resource_density")
+        resource_type_map = MapGenerator(seed=self.seed + 3).generate_map((len(chunks), len(chunks[0])), octaves=4, name="resource_type")
+        
+        max_resource_per_chunk = 5 # TODO: Make this variable
+        resource_count = 0
+        
+        # Create resource nodes
+        for chunk_row in chunks:
+            for chunk in chunk_row:
+                # Chunk's location in world
+                chunk_x = int(chunk.get_location()[0] / self.chunk_size)
+                chunk_y = int(chunk.get_location()[1] / self.chunk_size)
+                
+                # Density of chunk
+                density = resource_density_map[chunk_x * self.chunk_size + chunk_y]
+                
+                # If the chunk has enough resource density, add resources
+                # TODO: Make this variable
+                # TODO: Make this a function of the biome
+                if density > -0.3:
+                    # Resource count is determined by the density of the chunk, scale 0 to 2 to get 0 to max_resource_per_chunk
+                    resource_count = max_resource_per_chunk * (density + 1 / 2)
+                    
+                    # Add resources to the chunk
+                    for i in range(int(resource_count)):
+                        # Resource type to spawn in chunk, currently arbitrary
+                        resource = AppleTree() if resource_type_map[chunk_x * self.chunk_size + chunk_y] > 0 else Cactus()
+                        
+                        # Random location in chunk
+                        resource_x = random.randint(0, chunk.size - 1)
+                        resource_y = random.randint(0, chunk.size - 1)
+                        
+                        chunk.get_tile_manager().get_tile((resource_x, resource_y)).add_resourcenode(resource)
 
     def generate_animals(self):
         for x in range(self.width):
@@ -176,7 +204,12 @@ class World(RenderableObserver):
                 else:
                     chunk = chunk_manager.get_chunk_at((x, y))
                 tile_manager = chunk.tile_manager
-                new_tile = Tile(location=(x, y), local_coordinates=(x % self.chunk_size, y % self.chunk_size), terrain=self.get_terrain_obj_at(x, y), biome=self.get_biome(self.get_biome_type_at(x, y)))
+                new_tile = Tile(
+                    location=(x, y),
+                    local_coordinates=(x % self.chunk_size, y % self.chunk_size),
+                    terrain=self.get_terrain_obj_at(x, y),
+                    biome=self.get_biome(self.get_biome_type_at(x, y))
+                )
                 new_tile.register_observer(chunk)
                 tile_manager.add_tile(new_tile)
     
@@ -210,7 +243,7 @@ class World(RenderableObserver):
         # Optionally, update resources, weather, or other global factors
         pass
     
-    def render(self, surface, filename=None, scale=1, output=RenderOutput.FILE, screen=None):
+    def render(self, surface, filename=None, scale=1, output=RenderOutput.FILE, screen=None, map_render_type=MapRenderType.ALL):
         
         tile_renderer = TileRenderer(None)
         
@@ -222,7 +255,7 @@ class World(RenderableObserver):
             for tile in tiles:
                 tile_renderer.set_tile(tile)
                 
-                coordinate_colour = tile_renderer.render()
+                coordinate_colour = tile_renderer.render(map_render_type=map_render_type)
                 
                 x = (chunk.get_location()[0] + tile.get_local_coordinates()[0]) * scale
                 y = (chunk.get_location()[1] + tile.get_local_coordinates()[1]) * scale
@@ -239,10 +272,10 @@ class World(RenderableObserver):
         
         if output == RenderOutput.FILE:
             if filename is None:
-                filename = self.seed + ".png"
+                filename = str(self.seed) + ".png"
             
-            pygame.image.save(surface=surface, filename=filename)
-            return
+            pygame.image.save(surface=surface, file=filename)
+            return surface
         elif output == RenderOutput.VARIABLE:
             return surface
     

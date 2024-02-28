@@ -18,7 +18,7 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
     
     sim_seed = world.get_seed()
     
-    scale = 5
+    scale = 1
     
     if render:
         clock = pygame.time.Clock()
@@ -39,20 +39,6 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
         
         step_nr += 1
         
-        # if render and step_nr % render_frequency == 0:
-        #     # print ("Simulation cycle %d" % step_nr)
-            
-        #     str_seed = str(sim_seed)
-            
-        #     # if a folder does not exist, create it
-        #     # filename = "output/" + str_seed + "/" + str(world.width) + "x" + str(world.height) + "_scale_" + str(scale) + "_" + str(step_nr) + ".png"
-            
-        #     if os.path.exists("output") == False:
-        #         os.mkdir("output")
-            
-        #     if os.path.exists("output/" + str_seed) == False:
-        #         os.mkdir("output/" + str_seed)
-        
         if render:
             surface = world.render(surface=surface, scale=scale, output=RenderOutput.VARIABLE)
             
@@ -62,6 +48,26 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
             window.fill(0)
             window.blit(surface, surface.get_rect(center = (screen_width, screen_height)))
             pygame.display.flip()
+            
+            if step_nr % render_frequency == 0:
+                str_seed = str(sim_seed)
+                
+                # if a folder does not exist, create it
+                filename = "output/" + str_seed + "/" + str(world.width) + "x" + str(world.height) + "_scale_" + str(scale) + "_" + str(step_nr) + ".png"
+                
+                if os.path.exists("output") == False:
+                    os.mkdir("output")
+                
+                if os.path.exists("output/" + str_seed) == False:
+                    os.mkdir("output/" + str_seed)
+                
+                print("Writing map file to " + filename)
+                
+                surface = world.render(surface=surface, scale=scale, output=RenderOutput.FILE, filename=filename)
+                
+        
+        if iteration % render_frequency == 0:
+            print(f"Iteration {iteration}")
         
         # Update the world state, which includes updating all pops within it
         world.update()
@@ -84,7 +90,7 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    world_width = 256
+    world_width = 512
     world_height = 256
     initial_pop_count = 10
     seed = 1234
@@ -122,7 +128,7 @@ def main():
     
     do_render = True # Set to True to render each step of the simulation to an image file
 
-    run_simulation(world, max_iterations=50000, render=do_render, render_frequency=25)
+    run_simulation(world, max_iterations=1000, render=do_render, render_frequency=250)
 
     print("Simulation complete")
 

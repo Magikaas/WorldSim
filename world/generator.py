@@ -9,26 +9,29 @@ from pynoise.noiseutil import RenderImage
 
 import numpy as np
 
-class WorldGenerator:
+class MapGenerator:
     def __init__(self, seed=None):
         self.seed = seed
 
-    def generate_map(self, size, octaves=10, persistence=0.3, lacunarity=3, scale=0.03):
+    def generate_map(self, size, octaves=4, persistence=0.3, lacunarity=3, force_new=False, name="Default"):
         map_data = []
         # return map
         
-        mapfilepath = "map/" + str(self.seed) + "/" + str(size[0]) + "x" + str(size[1]) + ".map"
-        
-        if os.path.exists("map") == False:
-            os.mkdir("map")
-        
-        if os.path.exists("map/" + str(self.seed)) == False:
-            os.mkdir("map/" + str(self.seed))
-        
-        if os.path.exists(mapfilepath) == True:
-            with open(mapfilepath, 'r') as reader:
-                map_data = reader.read().split(',')
-                return list(map(float, map_data))
+        mapfilepath = "map/" + str(self.seed) + "/" + str(octaves) + "/" + name + "_" + str(size[0]) + "x" + str(size[1]) + ".map"
+        if force_new == False:
+            if os.path.exists("map") == False:
+                os.mkdir("map")
+            
+            if os.path.exists("map/" + str(self.seed)) == False:
+                os.mkdir("map/" + str(self.seed))
+            
+            if os.path.exists("map/" + str(self.seed) + "/" + str(octaves) + "/") == False:
+                os.mkdir("map/" + str(self.seed) + "/" + str(octaves) + "/")
+            
+            if os.path.exists(mapfilepath) == True:
+                with open(mapfilepath, 'r') as reader:
+                    map_data = reader.read().split(',')
+                    return list(map(float, map_data))
         
         perlin = Perlin(octaves=octaves, persistence=persistence, lacunarity=lacunarity, seed=self.seed)
         

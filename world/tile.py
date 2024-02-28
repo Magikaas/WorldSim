@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List
 
-from obj.worldobj.worldobjecttype.tree import Tree
+from obj.worldobj.worldobjecttype.resourcenode import ResourceNode
 from obj.worldobj.worldobjecttype.pop import Pop
 
 from .biome import Biome
@@ -20,7 +20,7 @@ class Tile(Subject):
         self.biome = biome
         self.pops = []
         self.animals = []
-        self.trees = []
+        self.resourcenodes = []
         self.colour_override = None
         self.dirty = True
     
@@ -37,7 +37,7 @@ class Tile(Subject):
         self.local_coordinates = local_coordinates
         self.notify_observers()
     
-    def get_pops(self) -> List[obj.worldobj.worldobjecttype.pop.Pop]:
+    def get_pops(self) -> List[Pop]:
         return self.pops
     
     def add_pop(self, pop):
@@ -71,20 +71,20 @@ class Tile(Subject):
         
         self.animals.remove(animal)
     
-    def get_trees(self) -> List[Tree]:
-        return self.trees
+    def get_resourcenodes(self) -> List[ResourceNode]:
+        return self.resourcenodes
     
-    def add_tree(self, tree):
-        if len(self.tree) == 0:
+    def add_resourcenode(self, node):
+        if len(self.resourcenodes) == 0:
             self.notify_observers()
         
-        self.trees.append(tree)
+        self.resourcenodes.append(node)
     
-    def remove_tree(self, tree):
+    def remove_resourcenode(self, node):
         if len(self.tree) > 0:
             self.notify_observers()
         
-        self.trees.remove(tree)
+        self.resourcenodes.remove(node)
     
     def get_terrain(self) -> Terrain:
         return self.terrain

@@ -1,5 +1,5 @@
 # worldgen/__init__.py
-from .generator import WorldGenerator
+from .generator import MapGenerator
 from .world import World
 from .chunk import Chunk
 from .tile import Tile

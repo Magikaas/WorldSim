@@ -14,7 +14,7 @@ class ChunkManager:
         self.chunk_size = 0
     
     def initialize_chunks(self):
-        self.chunks = [[0] * self.chunk_size for i in range(self.chunk_size)]
+        self.chunks = [[0] * int(self.world.height / self.chunk_size) for i in range(int(self.world.width / self.chunk_size))]
     
     def add_chunk(self, chunk: Chunk):
         chunk_x = int(chunk.get_location()[0] / self.chunk_size)
