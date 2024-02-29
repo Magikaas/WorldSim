@@ -1,5 +1,5 @@
-from .resourcenode import ResourceNode
-from .harvestable import HarvestType
+from .worldobjecttype.resourcenode import ResourceNode
+from .worldobjecttype.harvestable import HarvestType
 
 from obj.item import Item
 from obj.item.wood import Wood
@@ -11,7 +11,7 @@ class TreeGrowthSpeed:
     FAST = 3
     BOOSTED = 5
 
-class Tree(ResourceNode):
+class WoodResource(ResourceNode):
     def __init__(self, type, harvest_type: HarvestType=None, harvestable_resource: Item=Wood):
         super().__init__(name=type, description="Test description tree", harvestable_resource=harvestable_resource)
         self.type = type

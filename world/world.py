@@ -3,6 +3,9 @@ from __future__ import annotations
 import random
 import pygame
 
+from pathfinding.core.grid import Grid
+from pathfinding.finder.a_star import AStarFinder, DiagonalMovement
+
 from world.terrain import Terrain, TerrainHeight
 from world.biome import Biome, Temperature, BiomeType
 from world.terraintype import *
@@ -15,6 +18,8 @@ from obj.worldobj.appletree import AppleTree
 from obj.worldobj.cactus import Cactus
 from obj.worldobj import Animal
 
+from obj.worldobj.worldobjecttype.resourcenode import ResourceNode
+
 from .generator import MapGenerator
 from .tile import Tile
 from .chunk import Chunk
@@ -22,6 +27,9 @@ from .chunk import Chunk
 from render.tilerenderer import TileRenderer
 from render.renderoutput import RenderOutput
 from render.rendertype import MapRenderType
+
+from path.path import Path
+from path.popmove import PopMove
 
 from observers import RenderableObserver
 
@@ -45,7 +53,9 @@ class World(RenderableObserver):
             self.temperature = None
             self.biomes = None
             self.chunk_manager = ChunkManager(world=self)
-            # self.tiles_per_terrain = dict() #TODO
+            self.pathfinder = AStarFinder(diagonal_movement=DiagonalMovement.never)
+            self.grid = None
+            self.pathfinder_prepped = False
     
     def set_pop_move_manager(self, manager):
         self.pop_move_manager = manager
@@ -92,7 +102,7 @@ class World(RenderableObserver):
         self.generate_resourcenodes()
     
     def generate_terrain(self):
-        self.terrain = MapGenerator(seed=self.seed).generate_map((self.height, self.width))
+        self.terrain = MapGenerator(seed=self.seed).generate_map((self.height, self.width), octaves=5, name="terrain")
 
     def generate_temperature(self):
         self.biomes = MapGenerator(seed=self.seed + 1).generate_map((self.height, self.width))
@@ -162,8 +172,9 @@ class World(RenderableObserver):
                 chunk_x = int(chunk.get_location()[0] / self.chunk_size)
                 chunk_y = int(chunk.get_location()[1] / self.chunk_size)
                 
+                resource_map_coordinate = chunk_x * int(self.height / self.chunk_size) + chunk_y
                 # Density of chunk
-                density = resource_density_map[chunk_x * self.chunk_size + chunk_y]
+                density = resource_density_map[resource_map_coordinate]
                 
                 # If the chunk has enough resource density, add resources
                 # TODO: Make this variable
@@ -175,7 +186,7 @@ class World(RenderableObserver):
                     # Add resources to the chunk
                     for i in range(int(resource_count)):
                         # Resource type to spawn in chunk, currently arbitrary
-                        resource = AppleTree() if resource_type_map[chunk_x * self.chunk_size + chunk_y] > 0 else Cactus()
+                        resource = AppleTree() if resource_type_map[resource_map_coordinate] > 0 else Cactus()
                         
                         # Random location in chunk
                         resource_x = random.randint(0, chunk.size - 1)
@@ -219,6 +230,9 @@ class World(RenderableObserver):
         tile_manager = chunk.get_tile_manager()
         return tile_manager.get_tile(tuple([coord % chunk.size for coord in location]))
     
+    def get_distance_between(self, location1, location2):
+        return abs(location1[0] - location2[0]) + abs(location1[1] - location2[1])
+    
     # Find a tile with the given terrain type
     def find_tiles_with_terrain(self, terrain_type) -> Tile:
         chunks = self.chunk_manager.get_chunks()
@@ -231,17 +245,6 @@ class World(RenderableObserver):
                     found_tiles.append(tile)
         
         return found_tiles
-    
-    def update(self):
-        # Update the world state for a new simulation step
-        
-        # Trigger updates for all pops in the world
-        PopManager().update()
-        
-        PopMoveManager().handle_moves()
-
-        # Optionally, update resources, weather, or other global factors
-        pass
     
     def render(self, surface, filename=None, scale=1, output=RenderOutput.FILE, screen=None, map_render_type=MapRenderType.ALL):
         
@@ -282,3 +285,110 @@ class World(RenderableObserver):
     # Observer notify
     def notify(self, subject):
         subject.make_dirty()
+    
+    def find_tiles_with_resourcenodes_near(self, location: tuple, resourcenode_type: ResourceNode, distance: int = 5) -> List[Tile]:
+        # Find resource nodes near the location
+        search_chunks = []
+        
+        multipliers = [-1, 1]
+        
+        for horizontal in multipliers:
+            for vertical in multipliers:
+                location_horizontal = location[0] + horizontal * distance
+                location_vertical = location[1] + vertical * distance
+                
+                if location_horizontal < 0:
+                    location_horizontal = self.width + location_horizontal
+                elif location_horizontal >= self.width:
+                    location_horizontal = location_horizontal - self.width
+                
+                if location_vertical < 0:
+                    location_vertical = self.height + location_vertical
+                elif location_vertical >= self.height:
+                    location_vertical = location_vertical - self.height
+                
+                corner_location = (location_horizontal, location_vertical)
+                
+                chunk = self.chunk_manager.get_chunk_at(corner_location)
+                
+                if chunk not in search_chunks:
+                    search_chunks.append(chunk)
+        
+        resourcenode_tiles = []
+        
+        for chunk in search_chunks:
+            tiles = chunk.get_tile_manager().get_tiles()
+            for tiles_row in tiles:
+                for tile in tiles_row:
+                    # If the tile is within the distance, add its resource nodes to the list
+                    if abs(tile.location[0] - location[0]) <= distance and abs(tile.location[1] - location[1]) <= distance:
+                        resourcenodes = tile.get_resourcenodes()
+                        for resourcenode in resourcenodes:
+                            # If the resourcenode is of the type we are looking for, add it to the list
+                            if isinstance(resourcenode, resourcenode_type):
+                                resourcenode_tiles.append(tile)
+        
+        return resourcenode_tiles
+    
+    def pathfind(self, pop, target_location: tuple):
+        self.prep_pathfinder()
+        # try:
+        nodepath, runs = self.pathfinder.find_path(start=self.grid.node(pop.location[0], pop.location[1]), end=self.grid.node(target_location[0], target_location[1]), graph=self.grid)
+        # except Exception as e:
+        #     print("Error finding path:", e)
+        #     return None
+        
+        path = Path(pop)
+        
+        print("Created path for pop:", pop.id, "to tile:", target_location, "with length:", len(nodepath))
+        
+        for node in nodepath:
+            x = node.x
+            y = node.y
+            
+            move = PopMove(pop, self.get_tile((x, y)))
+            path.add_move(move)
+        
+        return path
+    
+    def prep_pathfinder(self):
+        chunks = self.chunk_manager.get_chunks()
+        
+        # Make 2 dimensional array with all the tiles in the world
+        gridnodes = [[0 for j in range(self.width)] for i in range(self.height)]
+        
+        for chunk_row in chunks:
+            for chunk in chunk_row:
+                tiles = chunk.get_tile_manager().get_tiles()
+                
+                for tiles_row in tiles:
+                    for tile in tiles_row:
+                        gridnodes[tile.location[1]][tile.location[0]] = 1 / tile.terrain.speed_multiplier if tile.terrain.speed_multiplier > 0 else 0
+        
+        self.grid = Grid(width=self.width, height=self.height, matrix=gridnodes, grid_id=0)
+        
+        self.grid.set_passable_left_right_border()
+        self.grid.set_passable_up_down_border()
+        
+        self.pathfinder_prepped = True
+    
+    def update(self):
+        # Update the world state for a new simulation step
+        
+        # Trigger updates for all pops in the world
+        PopManager().update()
+        
+        PopMoveManager().handle_moves()
+        
+        pops = PopManager().get_idle_pops()
+        
+        # For pathing testing purposes only
+        # for pop in pops:
+        #     pop_chunk = self.chunk_manager.get_chunk_at((0, 0))
+        #     target_tile = pop_chunk.get_tile_manager().get_tile((0, 0))
+            
+        #     path = self.pathfind(pop, target_tile)
+            
+        #     pop.set_path(path)
+            
+        #     PopManager().update_pop(pop)

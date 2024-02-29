@@ -18,7 +18,7 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
     
     sim_seed = world.get_seed()
     
-    scale = 1
+    scale = 5
     
     if render:
         clock = pygame.time.Clock()
@@ -35,7 +35,7 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
     for iteration in range(max_iterations):
         if render:
             pygame.event.get()
-            # clock.tick(60)
+            clock.tick(15)
         
         step_nr += 1
         
@@ -90,8 +90,8 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    world_width = 512
-    world_height = 256
+    world_width = 128
+    world_height = 128
     initial_pop_count = 10
     seed = 1234
     chunk_size = 16
@@ -128,7 +128,7 @@ def main():
     
     do_render = True # Set to True to render each step of the simulation to an image file
 
-    run_simulation(world, max_iterations=1000, render=do_render, render_frequency=250)
+    run_simulation(world, max_iterations=2500, render=do_render, render_frequency=250)
 
     print("Simulation complete")
 

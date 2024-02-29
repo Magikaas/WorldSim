@@ -1,6 +1,6 @@
-from .worldobjecttype.tree import Tree
+from .woodresource import WoodResource
 from .worldobjecttype.harvestable import HarvestType
 
-class Cactus(Tree):
+class Cactus(WoodResource):
     def __init__(self):
         super().__init__(type='cactus', harvest_type=HarvestType.SICKLE)

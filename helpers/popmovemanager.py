@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import obj.worldobj.worldobjecttype.pop
+    import obj.worldobj.pop
     import world
     import path
 
@@ -34,7 +34,7 @@ class PopMoveManager:
                 self.move_pop_to_tile(pop=move.pop, destination=move.destination_tile)
                 self.popmoves.remove(move)
     
-    def get_move_for_pop(self, pop: obj.worldobj.worldobjecttype.pop.Pop):
+    def get_move_for_pop(self, pop: obj.worldobj.pop.Pop):
         for move in self.popmoves:
             if move.pop.id == pop.id and move.invalid == False and move.is_done() == False:
                 return move
@@ -49,7 +49,7 @@ class PopMoveManager:
         
         self.popmoves.append(popmove)
     
-    def move_pop_to_tile(self, pop: obj.worldobj.worldobjecttype.pop.Pop, destination: world.tile.Tile):
+    def move_pop_to_tile(self, pop: obj.worldobj.pop.Pop, destination: world.tile.Tile):
         # print("Moving pop %s to %s" % (pop.location, direction))
         past_chunk = self.world.chunk_manager.get_chunk_at(pop.location)
         past_chunk.make_dirty()

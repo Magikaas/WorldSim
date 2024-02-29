@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List
 from .popmovemanager import PopMoveManager
-from obj.worldobj.worldobjecttype.pop import Pop
+from obj.worldobj.pop import Pop
 
 class PopManager():
     _instance = None
@@ -36,8 +36,21 @@ class PopManager():
     def remove_pop(self, pop):
         self.pops.remove(pop)
     
+    def update_pop(self, pop):
+        for i in range(len(self.pops)):
+            if self.pops[i].id == pop.id:
+                self.pops[i] = pop
+                return
+    
     def get_pops(self) -> List[Pop]:
         return self.pops
+    
+    def get_idle_pops(self) -> List[Pop]:
+        idle_pops = []
+        for pop in self.pops:
+            if pop.is_idle():
+                idle_pops.append(pop)
+        return idle_pops
     
     def move_pop(self, pop, x, y):
         self.pop_move_manager.move_pop(pop, x, y)

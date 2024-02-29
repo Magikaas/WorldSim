@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from typing import List
+from pathfinding.core.node import Node
 
 from obj.worldobj.worldobjecttype.resourcenode import ResourceNode
-from obj.worldobj.worldobjecttype.pop import Pop
+from obj.worldobj.pop import Pop
 
 from .biome import Biome
 from .terrain import Terrain
@@ -109,3 +110,6 @@ class Tile(Subject):
     def set_colour_override(self, colour):
         self.colour_override = colour
         self.notify_observers()
+    
+    def get_path_node(self) -> Node:
+        return Node(self.location[0], self.location[1])

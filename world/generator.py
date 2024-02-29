@@ -37,10 +37,12 @@ class MapGenerator:
         
         map_data = noise_map_plane(width=size[0], height=size[1], lower_x=-2, upper_x=6, lower_z=-1, upper_z=5, source=perlin)
         
+        compressed_map_data = [round(num, 1) for num in map_data]
+        
         with open(mapfilepath, 'w') as writer:
-            writer.write(','.join(map(str, map_data)))
+            writer.write(','.join(map(str, compressed_map_data)))
 
-        return map_data
+        return compressed_map_data
     
     def generate_heightmap(self, size, octaves=10, persistence=0.3, lacunarity=3.0, scale=0.03):
         return self.generate_map(size, octaves, persistence, lacunarity, scale)
