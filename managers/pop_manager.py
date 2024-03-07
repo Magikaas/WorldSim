@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import List
-from .popmovemanager import PopMoveManager
+from .pop_move_manager import PopMoveManager
 from obj.worldobj.pop import Pop
 
 class PopManager():

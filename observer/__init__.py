@@ -1,3 +1,3 @@
 from .observer import Observer
 from .subject import Subject
-from .renderableobserver import RenderableObserver
+from .renderable_observer import RenderableObserver

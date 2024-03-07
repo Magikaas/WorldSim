@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from world.terraintype import *
+from world.terrain import *
 
 from typing import TYPE_CHECKING
 

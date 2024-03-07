@@ -1,5 +1,5 @@
-from helpers.tilemanager import TileManager
-from observers import Subject, RenderableObserver
+from world.tilemanager import TileManager
+from observer import Subject, RenderableObserver
 
 class Chunk(Subject, RenderableObserver):
     def __init__(self, location, size=16):

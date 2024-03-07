@@ -6,10 +6,10 @@ import random
 
 # examples/generate_world.py
 from world.world import World
-from helpers.popmanager import PopManager
-from helpers.popmovemanager import PopMoveManager
+from managers.pop_manager import PopManager
+from managers.pop_move_manager import PopMoveManager
 
-from render.renderoutput import RenderOutput
+from utils.renderoutput import RenderOutput
 
 import os
 
@@ -35,7 +35,7 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
     for iteration in range(max_iterations):
         if render:
             pygame.event.get()
-            clock.tick(15)
+            # clock.tick(15)
         
         step_nr += 1
         
@@ -63,7 +63,7 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
                 
                 print("Writing map file to " + filename)
                 
-                surface = world.render(surface=surface, scale=scale, output=RenderOutput.FILE, filename=filename)
+                surface = world.render(surface=surface, scale=scale, output=RenderOutput.FILE)
                 
         
         if iteration % render_frequency == 0:
@@ -90,10 +90,10 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    world_width = 128
-    world_height = 128
+    world_width = 256
+    world_height = 256
     initial_pop_count = 10
-    seed = 1234
+    seed = 1000
     chunk_size = 16
     
     # np.random.seed(hash(seed) % 2**32)

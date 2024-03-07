@@ -5,23 +5,28 @@ from pathfinding.core.node import Node
 
 from obj.worldobj.worldobjecttype.resourcenode import ResourceNode
 from obj.worldobj.pop import Pop
+from obj.worldobj.worldobjecttype import Building
 
 from .biome import Biome
 from .terrain import Terrain
 
-from observers import Subject
+from observer import Subject
 
 class Tile(Subject):
     def __init__(self, location: tuple, local_coordinates: tuple, terrain: Terrain, biome: Biome):
         super().__init__()
         
         self.location = location
-        self.local_coordinates = local_coordinates
+        self.local_coordinates = local_coordinates # Coordinates within its chunk
+        
         self.terrain = terrain
         self.biome = biome
+        
         self.pops = []
         self.animals = []
-        self.resourcenodes = []
+        self.resourcenode = None
+        self.building = None
+        
         self.colour_override = None
         self.dirty = True
     
@@ -72,20 +77,31 @@ class Tile(Subject):
         
         self.animals.remove(animal)
     
-    def get_resourcenodes(self) -> List[ResourceNode]:
-        return self.resourcenodes
+    def get_resourcenode(self) -> List[ResourceNode]:
+        return self.resourcenode
     
     def add_resourcenode(self, node):
-        if len(self.resourcenodes) == 0:
+        if self.resourcenode is not None and len(self.resourcenode) > 0:
+            # print("Attempting to add resourcenode to tile with existing node")
+            return False
+        else:
             self.notify_observers()
-        
-        self.resourcenodes.append(node)
+            self.resourcenode.append(node)
+            return True
     
-    def remove_resourcenode(self, node):
-        if len(self.tree) > 0:
+    def remove_resourcenode(self):
+        if self.resourcenode is not None:
             self.notify_observers()
-        
-        self.resourcenodes.remove(node)
+            self.resourcenode = None
+    
+    def build(self, building: Building):
+        self.building = building
+    
+    def get_building(self) -> Building:
+        return self.building
+    
+    def remove_building(self):
+        self.building = None
     
     def get_terrain(self) -> Terrain:
         return self.terrain

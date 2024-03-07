@@ -8,11 +8,11 @@ from pathfinding.finder.a_star import AStarFinder, DiagonalMovement
 
 from world.terrain import Terrain, TerrainHeight
 from world.biome import Biome, Temperature, BiomeType
-from world.terraintype import *
+from world.terrain import *
 
-from helpers.chunkmanager import ChunkManager
-from helpers.popmovemanager import PopMoveManager
-from helpers.popmanager import PopManager
+from world.chunkmanager import ChunkManager
+from managers.pop_move_manager import PopMoveManager
+from managers.pop_manager import PopManager
 
 from obj.worldobj.appletree import AppleTree
 from obj.worldobj.cactus import Cactus
@@ -24,14 +24,14 @@ from .generator import MapGenerator
 from .tile import Tile
 from .chunk import Chunk
 
-from render.tilerenderer import TileRenderer
-from render.renderoutput import RenderOutput
-from render.rendertype import MapRenderType
+from utils.tilerenderer import TileRenderer
+from utils.renderoutput import RenderOutput
+from utils.rendertype import MapRenderType
 
 from path.path import Path
 from path.popmove import PopMove
 
-from observers import RenderableObserver
+from observer import RenderableObserver
 
 # Longterm TODO: Make singleton possible with multiple 'Worlds'
 class World(RenderableObserver):
@@ -163,7 +163,7 @@ class World(RenderableObserver):
         resource_type_map = MapGenerator(seed=self.seed + 3).generate_map((len(chunks), len(chunks[0])), octaves=4, name="resource_type")
         
         max_resource_per_chunk = 5 # TODO: Make this variable
-        resource_count = 0
+        resources_to_add = 0
         
         # Create resource nodes
         for chunk_row in chunks:
@@ -181,10 +181,14 @@ class World(RenderableObserver):
                 # TODO: Make this a function of the biome
                 if density > -0.3:
                     # Resource count is determined by the density of the chunk, scale 0 to 2 to get 0 to max_resource_per_chunk
-                    resource_count = max_resource_per_chunk * (density + 1 / 2)
+                    resources_to_add = max_resource_per_chunk * (density + 1 / 2)
+                    
+                    failed_adding = 0
+                    
+                    tile_manager = chunk.get_tile_manager()
                     
                     # Add resources to the chunk
-                    for i in range(int(resource_count)):
+                    while int(resources_to_add) > 0:
                         # Resource type to spawn in chunk, currently arbitrary
                         resource = AppleTree() if resource_type_map[resource_map_coordinate] > 0 else Cactus()
                         
@@ -192,14 +196,20 @@ class World(RenderableObserver):
                         resource_x = random.randint(0, chunk.size - 1)
                         resource_y = random.randint(0, chunk.size - 1)
                         
-                        chunk.get_tile_manager().get_tile((resource_x, resource_y)).add_resourcenode(resource)
+                        added_resource = tile_manager.get_tile((resource_x, resource_y)).add_resourcenode(resource)
+                        
+                        if added_resource:
+                            resources_to_add -= 1
+                        else:
+                            # If the resource node could not be added, try again
+                            failed_adding += 1
+                            continue
+        
+        print("Failed adding resources:", failed_adding)
 
     def generate_animals(self):
-        for x in range(self.width):
-            for y in range(self.height):
-                if self.map[x][y].biome.supports_animals():
-                    # Add animals based on biome
-                    self.animals.append(Animal(species='deer', location=(x, y), health=100, food_value=50))
+        # TODO
+        pass
     
     # Generate map 2d array that implements terrain and biome maps and adds trees and animals
     def generate_map(self):
@@ -275,7 +285,7 @@ class World(RenderableObserver):
         
         if output == RenderOutput.FILE:
             if filename is None:
-                filename = str(self.seed) + ".png"
+                return surface
             
             pygame.image.save(surface=surface, file=filename)
             return surface
@@ -292,6 +302,7 @@ class World(RenderableObserver):
         
         multipliers = [-1, 1]
         
+        # Fetch all chunks within the distance
         for horizontal in multipliers:
             for vertical in multipliers:
                 location_horizontal = location[0] + horizontal * distance
@@ -322,11 +333,10 @@ class World(RenderableObserver):
                 for tile in tiles_row:
                     # If the tile is within the distance, add its resource nodes to the list
                     if abs(tile.location[0] - location[0]) <= distance and abs(tile.location[1] - location[1]) <= distance:
-                        resourcenodes = tile.get_resourcenodes()
-                        for resourcenode in resourcenodes:
-                            # If the resourcenode is of the type we are looking for, add it to the list
-                            if isinstance(resourcenode, resourcenode_type):
-                                resourcenode_tiles.append(tile)
+                        resourcenode = tile.get_resourcenode()
+                        
+                        if isinstance(resourcenode, resourcenode_type):
+                            resourcenode_tiles.append(tile)
         
         return resourcenode_tiles
     
@@ -381,14 +391,3 @@ class World(RenderableObserver):
         PopMoveManager().handle_moves()
         
         pops = PopManager().get_idle_pops()
-        
-        # For pathing testing purposes only
-        # for pop in pops:
-        #     pop_chunk = self.chunk_manager.get_chunk_at((0, 0))
-        #     target_tile = pop_chunk.get_tile_manager().get_tile((0, 0))
-            
-        #     path = self.pathfind(pop, target_tile)
-            
-        #     pop.set_path(path)
-            
-        #     PopManager().update_pop(pop)

@@ -3,3 +3,4 @@ numpy
 pillow
 pygame-ce
 pathfinding
+py_trees

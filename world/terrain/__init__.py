@@ -1,3 +1,4 @@
+from .terrain import Terrain, TerrainHeight
 from .unland import Unland
 from .desert import Desert
 from .forest import Forest

@@ -1,6 +1,6 @@
 from world.tile import Tile
 
-from render.rendertype import MapRenderType
+from utils.rendertype import MapRenderType
 
 class TileRenderer():
     def __init__(self, tile: Tile):
@@ -14,7 +14,7 @@ class TileRenderer():
         
         num_pops = len(tile.get_pops())
         num_animals = len(tile.get_animals())
-        num_resourcenodes = len(tile.get_resourcenodes())
+        has_resourcenode = tile.get_resourcenode() is not None and len(tile.get_resourcenode()) > 0
         
         coordinate_colour = None
         
@@ -29,7 +29,7 @@ class TileRenderer():
                     # Render the animal as a brown square
                     coordinate_colour = (139, 69, 19)
                     break
-                elif self.should_render(map_render_type, MapRenderType.RESOURCES) and num_resourcenodes > 0:
+                elif self.should_render(map_render_type, MapRenderType.RESOURCES) and has_resourcenode > 0:
                     # Render the resource node as a bright pink square
                     coordinate_colour = (255, 105, 180)
                     break
@@ -54,7 +54,7 @@ class TileRenderer():
         return len(self.get_tile().get_animals())
 
     def count_resourcenodes(self):
-        return len(self.get_tile().get_resourcenodes())
+        return len(self.get_tile().get_resourcenode())
     
     def get_terrain_colour(self) -> tuple:
         # Combine the terrain and biome colours

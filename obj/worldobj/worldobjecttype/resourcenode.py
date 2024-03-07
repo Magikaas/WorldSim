@@ -2,13 +2,14 @@
 # TODO: Make node slowly regenerate resources
 # TODO: 
 
-from obj.worldobject import WorldObject, WORLD_OBJECT_TYPE
+from world.worldobject import WorldObject, WORLD_OBJECT_TYPE
 from .harvestable import Harvestable
 
 class ResourceNode(WorldObject, Harvestable):
     def __init__(self, name, description, harvestable_resource, resource_amount=1000):
         super().__init__(name=name, description=description, object_type=WORLD_OBJECT_TYPE.RESOURCE_NODE)
         self.resource_amount = resource_amount
+        self.harvestable_resource = harvestable_resource
     
     def harvest(self, amount):
         if amount > self.resource_amount:
@@ -16,6 +17,8 @@ class ResourceNode(WorldObject, Harvestable):
             self.resource_amount = 0
         else:
             self.resource_amount -= amount
+        
+        return (self.harvestable_resource, amount)
     
     def __str__(self):
         return f"ResourceNode: {self.harvestable_resource} {self.resource_amount}"
