@@ -35,7 +35,7 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
     for iteration in range(max_iterations):
         if render:
             pygame.event.get()
-            # clock.tick(15)
+            # clock.tick(1)
         
         step_nr += 1
         

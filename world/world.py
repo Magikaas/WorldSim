@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import List
 
 import random
 import pygame
@@ -14,9 +15,10 @@ from world.chunkmanager import ChunkManager
 from managers.pop_move_manager import PopMoveManager
 from managers.pop_manager import PopManager
 
+from obj.item import Item
+
 from obj.worldobj.appletree import AppleTree
 from obj.worldobj.cactus import Cactus
-from obj.worldobj import Animal
 
 from obj.worldobj.worldobjecttype.resourcenode import ResourceNode
 
@@ -45,9 +47,8 @@ class World(RenderableObserver):
         return cls._instance
     
     def __init__(self):
-        # Initialize only if not already initialized
-        if not hasattr(self, 'initialized'):  # This prevents re-initialization
-            self.initialized = True  # Mark as initialized
+        if not hasattr(self, 'initialized'):
+            self.initialized = True
             
             self.terrain = None
             self.temperature = None
@@ -296,7 +297,7 @@ class World(RenderableObserver):
     def notify(self, subject):
         subject.make_dirty()
     
-    def find_tiles_with_resourcenodes_near(self, location: tuple, resourcenode_type: ResourceNode, distance: int = 5) -> List[Tile]:
+    def get_all_tiles_within_distance(self, location: tuple, distance: int = 5) -> List[Tile]:
         # Find resource nodes near the location
         search_chunks = []
         
@@ -325,6 +326,11 @@ class World(RenderableObserver):
                 if chunk not in search_chunks:
                     search_chunks.append(chunk)
         
+        return search_chunks
+    
+    def find_tiles_with_resourcenodes_near(self, location: tuple, resourcenode_type: ResourceNode, distance: int = 5) -> List[Tile]:
+        search_chunks = self.get_all_tiles_within_distance(location=location, distance=distance)
+        
         resourcenode_tiles = []
         
         for chunk in search_chunks:
@@ -336,6 +342,22 @@ class World(RenderableObserver):
                         resourcenode = tile.get_resourcenode()
                         
                         if isinstance(resourcenode, resourcenode_type):
+                            resourcenode_tiles.append(tile)
+        
+        return resourcenode_tiles
+    
+    def find_tiles_with_resource_near(self, location: tuple, resource_type: Item, distance: int = 5) -> List[Tile]:
+        search_chunks = self.get_all_tiles_within_distance(location=location, distance=distance)
+        
+        resourcenode_tiles = []
+        
+        for chunk in search_chunks:
+            tiles = chunk.get_tile_manager().get_tiles()
+            for tiles_row in tiles:
+                for tile in tiles_row:
+                    # If the tile is within the distance, add its resource nodes to the list
+                    if abs(tile.location[0] - location[0]) <= distance and abs(tile.location[1] - location[1]) <= distance:
+                        if tile.get_resourcenode().get_resource_type() == resource_type:
                             resourcenode_tiles.append(tile)
         
         return resourcenode_tiles

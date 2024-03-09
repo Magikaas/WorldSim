@@ -15,6 +15,7 @@ class EntityState:
     FARMING = 11
     GATHERING = 12
     BUILDING = 13
+    SEARCHING = 14
 
 class Entity(ABC):
     def __init__(self, id, name, location, world):

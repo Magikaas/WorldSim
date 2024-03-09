@@ -1,8 +1,7 @@
 from .worldobjecttype.resourcenode import ResourceNode
 from .worldobjecttype.harvestable import HarvestType
 
-from obj.item import Item
-from obj.item.wood import Wood
+from obj.item import Item, Wood
 
 # Enum with different growth speeds for trees
 class TreeGrowthSpeed:
@@ -12,7 +11,7 @@ class TreeGrowthSpeed:
     BOOSTED = 5
 
 class WoodResource(ResourceNode):
-    def __init__(self, type, harvest_type: HarvestType=None, harvestable_resource: Item=Wood):
+    def __init__(self, type, harvest_type: HarvestType=None, harvestable_resource: Item=Wood()):
         super().__init__(name=type, description="Test description tree", harvestable_resource=harvestable_resource)
         self.type = type
         self.harvest_type = harvest_type

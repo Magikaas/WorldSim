@@ -14,7 +14,7 @@ class TileRenderer():
         
         num_pops = len(tile.get_pops())
         num_animals = len(tile.get_animals())
-        has_resourcenode = tile.get_resourcenode() is not None and len(tile.get_resourcenode()) > 0
+        has_resourcenode = tile.get_resourcenode() is not None
         
         coordinate_colour = None
         
@@ -29,7 +29,7 @@ class TileRenderer():
                     # Render the animal as a brown square
                     coordinate_colour = (139, 69, 19)
                     break
-                elif self.should_render(map_render_type, MapRenderType.RESOURCES) and has_resourcenode > 0:
+                elif self.should_render(map_render_type, MapRenderType.RESOURCES) and has_resourcenode:
                     # Render the resource node as a bright pink square
                     coordinate_colour = (255, 105, 180)
                     break

@@ -1,14 +1,20 @@
 from __future__ import annotations
+from typing import List
 
 import random
 
 from enum import Enum
 
 from managers.pop_move_manager import PopMoveManager
+from managers.pop_goal_manager import PopGoalManager
 
 from path.popmove import PopMove
 from .worldobjecttype.entity import Entity, EntityState
 from .woodresource import WoodResource
+
+from ai.goal import GatherGoal
+
+from obj.item import Wood, ItemStack
 
 class PopGoal:
     NONE = 0
@@ -44,6 +50,8 @@ class Pop(Entity):
         self.path = None
         
         self.state = EntityState.IDLE
+        
+        self.pop_goal_manager = PopGoalManager(self)
     
     def move_to_world(self, world):
         self.world = world
@@ -95,7 +103,24 @@ class Pop(Entity):
     def is_idle(self):
         return self.state == EntityState.IDLE
     
+    def get_inventory(self):
+        return self.inventory
+    
+    def add_item(self, itemstack: ItemStack):
+        self.inventory.add_item(itemstack.item, itemstack.amount)
+    
     def update(self):
+        if self.inventory.get_quantity(Wood()) < 20:
+            # If the pop does not have the goal, add it
+            goal = GatherGoal(self, itemstack=ItemStack(Wood(), 5))
+            
+            if goal not in self.pop_goal_manager.goals:
+                self.pop_goal_manager.add_goal(goal)
+        
+        self.pop_goal_manager.perform_goals()
+        
+        return True
+        
         # Update logic for aging, health changes, skill improvements, etc.
         self.age += 1
         if self.food <= 0:
@@ -219,29 +244,33 @@ class Pop(Entity):
 
 class Inventory:
     def __init__(self):
-        # Initialize the inventory with an empty dictionary
-        # Keys are item names (or IDs) and values are quantities
-        self.items = {}
-
+        self.items = []
+    
+    def get_items(self) -> List[ItemStack]:
+        return self.items
+    
     def add_item(self, item, quantity=1):
-        """Add a specified quantity of an item to the inventory."""
-        if item in self.items:
-            self.items[item] += quantity  # Increase quantity if item already exists
-        else:
-            self.items[item] = quantity  # Add new item with specified quantity
+        for item in self.items:
+            if item.item == item:
+                item.amount += quantity
+                return
 
     def remove_item(self, item, quantity=1):
-        """Remove a specified quantity of an item from the inventory.
-           Removes the item entirely if the quantity drops to zero or below."""
-        if item in self.items:
-            self.items[item] -= quantity
-            if self.items[item] <= 0:
-                del self.items[item]  # Remove the item if quantity is zero or negative
+        for item in self.items:
+            if item.item == item:
+                if item.amount <= 0:
+                    print("Attempting to remove item from inventory with 0 or less quantity")
+                    return
+                
+                item.amount -= quantity
+                return
 
     def get_quantity(self, item):
-        """Return the quantity of the specified item in the inventory."""
-        return self.items.get(item, 0)  # Returns 0 if the item is not found
+        for item in self.items:
+            if item.item == item:
+                return item.amount
+        
+        return 0
 
     def __str__(self):
-        """String representation for debugging purposes."""
         return str(self.items)

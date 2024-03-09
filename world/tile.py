@@ -77,16 +77,16 @@ class Tile(Subject):
         
         self.animals.remove(animal)
     
-    def get_resourcenode(self) -> List[ResourceNode]:
+    def get_resourcenode(self) -> ResourceNode:
         return self.resourcenode
     
     def add_resourcenode(self, node):
-        if self.resourcenode is not None and len(self.resourcenode) > 0:
+        if self.resourcenode is not None:
             # print("Attempting to add resourcenode to tile with existing node")
             return False
         else:
             self.notify_observers()
-            self.resourcenode.append(node)
+            self.resourcenode = node
             return True
     
     def remove_resourcenode(self):
