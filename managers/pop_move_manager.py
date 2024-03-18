@@ -20,34 +20,39 @@ class PopMoveManager:
     def __init__(self):
         # Initialize only if not already initialized
         if not hasattr(self, 'initialized'):  # This prevents re-initialization
-            self.popmoves = []
+            self.popmoves = {}
             self.initialized = True
     
     def set_world(self, world: world.World):
         self.world = world
     
     def handle_moves(self):
-        for move in self.popmoves:
+        # Move pops along their paths
+        for popid in self.popmoves:
+            if len(self.popmoves[popid]) == 0:
+                continue
+            move = self.popmoves[popid][0]
+            
             move.progress_move()
             
             if move.is_done():
+                # print("Pop %s has arrived at %s" % (move.pop.name, move.destination_tile.location))
                 self.move_pop_to_tile(pop=move.pop, destination=move.destination_tile)
-                self.popmoves.remove(move)
+                self.popmoves[popid] = self.popmoves[popid][1:]
+            
     
     def get_move_for_pop(self, pop: obj.worldobj.pop.Pop):
-        for move in self.popmoves:
-            if move.pop.id == pop.id and move.invalid == False and move.is_done() == False:
-                return move
-        return None
+        if pop not in self.popmoves or len(self.popmoves[pop.id]) == 0:
+            return None
+        else:
+            return self.popmoves[pop][0]
     
     def move_pop(self, popmove: path.PopMove):
-        for move in self.popmoves:
-            if move.pop.id == popmove.pop.id:
-                # Do not add another move for a pop that is already moving, this is an error
-                print("Pop %s is already moving" % popmove.pop.name)
-                return
+        # print("Moving pop %s to %s" % (popmove.pop.name, popmove.destination_tile.location))
+        if popmove.pop.id not in self.popmoves:
+            self.popmoves[popmove.pop.id] = []
         
-        self.popmoves.append(popmove)
+        self.popmoves[popmove.pop.id].append(popmove)
     
     def move_pop_to_tile(self, pop: obj.worldobj.pop.Pop, destination: world.tile.Tile):
         # print("Moving pop %s to %s" % (pop.location, direction))

@@ -2,16 +2,36 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List, TYPE_CHECKING
 
-from obj.worldobj.worldobjecttype import Entity, Building
 from obj.item import Item, ItemStack
+
+from obj.worldobj.entity import Entity
+from obj.worldobj.building import Building
+
+from utils.logger import Logger
+
+import managers.pop_manager
+
+from .blackboard import Blackboard
 
 if TYPE_CHECKING:
     import world
     import world.tile
 
+class PropertyCheckOperator:
+    EQUALS = "=="
+    GREATER_THAN = ">"
+    LESS_THAN = "<"
+    GREATER_THAN_OR_EQUALS = ">="
+    LESS_THAN_OR_EQUALS = "<="
+
 class Condition(ABC):
     def __init__(self, type: str):
         self.type = type
+        self.inverted = False
+        
+        self.pop_manager = managers.pop_manager.PopManager()
+        
+        self.logger = Logger(type)
     
     def is_opposite_check(self):
         return self.inverted
@@ -19,28 +39,45 @@ class Condition(ABC):
     def check_condition(self):
         return self.inverted is not self.check()
     
-    def inverted(self):
+    def invert(self):
         self.inverted = True
         return self
+    
+    def setContext(self, context):
+        self.context = context
     
     # The conditions that need to be fulfilled for an action to be considered executed or a goal to be considered completed.
     @abstractmethod
     def check(self): ...
 
+class SelectorCondition(Condition):
+    def __init__(self, conditions: List[Condition]):
+        super().__init__(type="selector")
+        self.conditions = conditions
+    
+    def check(self):
+        for condition in self.conditions:
+            if condition.check():
+                return True
+        return False
+    
+    def add_condition(self, condition: Condition):
+        self.conditions.append(condition)
+
 class OnLocationCondition(Condition):
     def __init__(self, entity: Entity, location: world.tile.Tile):
         super().__init__(type="move")
-        self.entity = entity
+        self.entity = self.pop_manager.get_pop(entity.id)
         self.location = location
     
     def check(self):
         return self.entity.location == self.location
 
 class HasItemsCondition(Condition):
-    def __init__(self, entity: Entity, items: List[ItemStack]):
+    def __init__(self, entity: Entity, item: List[ItemStack]):
         super().__init__(type="has_items")
-        self.entity = entity
-        self.items = items
+        self.entity = self.pop_manager.get_pop(entity.id)
+        self.item = item
         self.remaining_items = []
     
     def get_remaining_items(self):
@@ -48,46 +85,20 @@ class HasItemsCondition(Condition):
     
     def check(self):
         target_inventory = self.entity.get_inventory()
-        target_items = target_inventory.get_items()
+        inv_items = target_inventory.get_items()
         
-        items_to_check = self.items
+        required_items = self.item
         
-        items_to_get = []
+        if not inv_items:
+            return False
         
-        check_attempts = 0
-        
-        while len(items_to_check) > 0:
-            if check_attempts > 100:
-                print("Something went wrong checking for items in " + self.entity.name + "'s inventory for these items: " + str(self.items))
-                break
-            
-            check_attempts += 1
-            
-            for check_item in items_to_check:
-                if len(target_items) == 0:
-                    items_to_get = items_to_check
-                    items_to_check = []
+        for itemstack in inv_items:
+            if type(itemstack) == type(required_items.item):
+                if inv_items[itemstack].amount >= required_items.amount:
+                    return True
                 else:
-                    for itemstack in target_items:
-                        # Does the target have the item in its inventory?
-                        if itemstack.item == check_item.item:
-                            remaining_amount = itemstack.amount - check_item.amount
-                            
-                            # Does the target have enough of the item in its inventory?
-                            if remaining_amount >= 0:
-                                # Not enough items, but we do have some
-                                item_to_get = ItemStack(item=itemstack.item, amount=remaining_amount)
-                                items_to_get.append(item_to_get)
-                            
-                            items_to_get.remove(itemstack)
-
-                        if len(items_to_get) == 0:
-                            print("Entity %s has %s %s" % (self.entity.name, check_item.amount, check_item.item.name))
-                            return True
-        
-        self.remaining_items = items_to_get
-        
-        print("Entity %s does not have %s %s" % (self.entity.name, check_item.amount, check_item.item.name))
+                    self.remaining_items.append(ItemStack(itemstack.item, required_items.amount - itemstack.amount))
+                    return False
         
         return False
 
@@ -118,3 +129,27 @@ class ResourceExistsCondition(Condition):
             return False
         
         return resourcenode.get_resource_type() == self.resource
+
+class EntityPropertyCondition(Condition):
+    def __init__(self, entity: Entity, property: str, value, operator: PropertyCheckOperator = PropertyCheckOperator.EQUALS):
+        super().__init__(type="entity_property")
+        self.entity = self.pop_manager.get_pop(entity.id)
+        self.property = property
+        self.value = value
+        self.operator = operator
+    
+    def check(self):
+        result = eval("self.entity." + self.property + " " + self.operator + " " + str(self.value))
+        return result
+
+class BlackboardContainsLocationCondition(Condition):
+    def __init__(self, resource: Item):
+        super().__init__(type="blackboard_contains_location")
+        
+        self.resource = resource
+    
+    def check(self):
+        resource_locations = Blackboard().get(key="resource_location:" + (self.resource if type(self.resource) == str else self.resource.name))
+        if resource_locations is None:
+            return False
+        return len(resource_locations) > 0

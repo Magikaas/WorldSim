@@ -3,6 +3,7 @@ from typing import List
 
 import random
 import pygame
+import copy
 
 from pathfinding.core.grid import Grid
 from pathfinding.finder.a_star import AStarFinder, DiagonalMovement
@@ -17,10 +18,7 @@ from managers.pop_manager import PopManager
 
 from obj.item import Item
 
-from obj.worldobj.appletree import AppleTree
-from obj.worldobj.cactus import Cactus
-
-from obj.worldobj.worldobjecttype.resourcenode import ResourceNode
+from obj.worldobj.resourcenode import ResourceNode, Oak, StoneResource
 
 from .generator import MapGenerator
 from .tile import Tile
@@ -32,6 +30,8 @@ from utils.rendertype import MapRenderType
 
 from path.path import Path
 from path.popmove import PopMove
+
+from utils.logger import Logger
 
 from observer import RenderableObserver
 
@@ -57,6 +57,9 @@ class World(RenderableObserver):
             self.pathfinder = AStarFinder(diagonal_movement=DiagonalMovement.never)
             self.grid = None
             self.pathfinder_prepped = False
+            self.render_mode = None
+            
+            self.logger = Logger("world")
     
     def set_pop_move_manager(self, manager):
         self.pop_move_manager = manager
@@ -124,7 +127,7 @@ class World(RenderableObserver):
         elif terrain_value >= TerrainHeight.MOUNTAIN_PEAK:
             return MountainPeak()
         else:
-            print("Invalid terrain value: " + str(terrain_value))
+            self.logger.log("Invalid terrain value: " + str(terrain_value))
             return Unland()
     
     def get_biome_type_at(self, x, y) -> Biome:
@@ -150,7 +153,7 @@ class World(RenderableObserver):
         elif biome_type == BiomeType.DESERT:
             return Desert()
         else:
-            print("Invalid biome type: " + biome_type)
+            self.logger.log("Invalid biome type: " + biome_type)
             return None
     
     def get_harvestables(self):
@@ -191,7 +194,7 @@ class World(RenderableObserver):
                     # Add resources to the chunk
                     while int(resources_to_add) > 0:
                         # Resource type to spawn in chunk, currently arbitrary
-                        resource = AppleTree() if resource_type_map[resource_map_coordinate] > 0 else Cactus()
+                        resource = Oak() if resource_type_map[resource_map_coordinate] > 0 else StoneResource()
                         
                         # Random location in chunk
                         resource_x = random.randint(0, chunk.size - 1)
@@ -206,7 +209,7 @@ class World(RenderableObserver):
                             failed_adding += 1
                             continue
         
-        print("Failed adding resources:", failed_adding)
+        self.logger.log("Failed adding resources:", failed_adding)
 
     def generate_animals(self):
         # TODO
@@ -257,32 +260,62 @@ class World(RenderableObserver):
         
         return found_tiles
     
+    def set_font(self, font):
+        self.font = font
+    
     def render(self, surface, filename=None, scale=1, output=RenderOutput.FILE, screen=None, map_render_type=MapRenderType.ALL):
-        
         tile_renderer = TileRenderer(None)
         
-        chunks = self.chunk_manager.get_chunks()
-        chunks = self.chunk_manager.get_chunks_to_render()
+        chunks = self.chunk_manager.get_dirty_chunks()
         
-        for chunk in chunks:
-            tiles = chunk.get_tile_manager().get_tiles_to_render()
-            for tile in tiles:
-                tile_renderer.set_tile(tile)
-                
-                coordinate_colour = tile_renderer.render(map_render_type=map_render_type)
-                
-                x = (chunk.get_location()[0] + tile.get_local_coordinates()[0]) * scale
-                y = (chunk.get_location()[1] + tile.get_local_coordinates()[1]) * scale
-                coordinate = (x, y)
-                size = (scale, scale)
-                rect = (coordinate, size)
-                
-                c = pygame.color.Color(coordinate_colour)
-                
-                pygame.draw.rect(surface=surface, color=c, rect=rect)
-                
-                tile.mark_rendered()
-            chunk.mark_rendered()
+        for chunk_list in chunks:
+            for chunk in chunk_list:
+                tiles = chunk.get_tile_manager().get_dirty_tiles()
+                for tiles_row in tiles:
+                    for tile in tiles_row:
+                        if self.render_mode is not None and self.render_mode == MapRenderType.PATHFINDING:
+                            location = tile.location
+                            
+                            node = self.used_grid.nodes[location[0]][location[1]]
+                            
+                            tile.dirty = True
+                            
+                            coordinate_colour = (0, 0, 0 if node.g == 0 else 255 / node.g)
+                        else:
+                            tile_renderer.set_tile(tile)
+                            
+                            coordinate_colour = tile_renderer.render(map_render_type=map_render_type)
+                        
+                        x = (chunk.get_location()[0] + tile.get_local_coordinates()[0]) * scale
+                        y = (chunk.get_location()[1] + tile.get_local_coordinates()[1]) * scale
+                        coordinate = (x, y)
+                        size = (scale, scale)
+                        rect = (coordinate, size)
+                        
+                        c = pygame.color.Color(coordinate_colour)
+                        
+                        pygame.draw.rect(surface=surface, color=c, rect=rect)
+                        
+                        resource_node = tile.get_resourcenode()
+                        
+                        if resource_node is not None:
+                            resource_text = self.font.render(resource_node.get_resource_type().name, 1, (255, 255, 255))
+                            surface.blit(resource_text, (tile.location[0] * scale, tile.location[1] * scale))
+                        
+                        # text_x = coordinate[0]
+                        # text_y = coordinate[1]
+                        # text = self.font.render(str(int(x/scale)) + "," + str(int(y/scale)), 1, (255, 255, 255))
+                        # surface.blit(text, (text_x, text_y))
+                        
+                        tile.mark_rendered()
+                chunk.mark_rendered()
+        
+        # for pop in pops:
+        #     location = pop.location
+        #     x = location[0] * scale
+        #     y = location[1] * scale
+        #     text = self.font.render(pop.name, 1, (255, 255, 255))
+        #     surface.blit(text, (x, y))
         
         if output == RenderOutput.FILE:
             if filename is None:
@@ -309,14 +342,14 @@ class World(RenderableObserver):
                 location_horizontal = location[0] + horizontal * distance
                 location_vertical = location[1] + vertical * distance
                 
-                if location_horizontal < 0:
+                while location_horizontal < 0:
                     location_horizontal = self.width + location_horizontal
-                elif location_horizontal >= self.width:
+                while location_horizontal >= self.width:
                     location_horizontal = location_horizontal - self.width
                 
-                if location_vertical < 0:
+                while location_vertical < 0:
                     location_vertical = self.height + location_vertical
-                elif location_vertical >= self.height:
+                while location_vertical >= self.height:
                     location_vertical = location_vertical - self.height
                 
                 corner_location = (location_horizontal, location_vertical)
@@ -327,6 +360,25 @@ class World(RenderableObserver):
                     search_chunks.append(chunk)
         
         return search_chunks
+    
+    def find_closest_location(self, start: tuple, location_list: List[tuple], entity) -> tuple:
+        closest_location = None
+        closest_distance = 1000
+        
+        use_pathfinding = True
+        
+        for location in location_list:
+            if use_pathfinding:
+                path = self.pathfind(entity, location)
+                distance = len(path.moves)
+            else:
+                distance = self.get_distance_between(start, location)
+            
+            if closest_location is None or distance < closest_distance:
+                closest_location = location
+                closest_distance = distance
+        
+        return closest_location
     
     def find_tiles_with_resourcenodes_near(self, location: tuple, resourcenode_type: ResourceNode, distance: int = 5) -> List[Tile]:
         search_chunks = self.get_all_tiles_within_distance(location=location, distance=distance)
@@ -357,22 +409,37 @@ class World(RenderableObserver):
                 for tile in tiles_row:
                     # If the tile is within the distance, add its resource nodes to the list
                     if abs(tile.location[0] - location[0]) <= distance and abs(tile.location[1] - location[1]) <= distance:
-                        if tile.get_resourcenode().get_resource_type() == resource_type:
-                            resourcenode_tiles.append(tile)
+                        if tile.get_resourcenode() is not None:
+                            if isinstance(resource_type, Item):
+                                if isinstance(tile.get_resourcenode().get_resource_type(), type(resource_type)):
+                                    resourcenode_tiles.append(tile)
+                            else:
+                                # If the resource type is not an item, check if the resource node is a type of item
+                                if isinstance(tile.get_resourcenode().get_resource_type(), resource_type):
+                                    resourcenode_tiles.append(tile)
         
         return resourcenode_tiles
     
     def pathfind(self, pop, target_location: tuple):
         self.prep_pathfinder()
-        # try:
-        nodepath, runs = self.pathfinder.find_path(start=self.grid.node(pop.location[0], pop.location[1]), end=self.grid.node(target_location[0], target_location[1]), graph=self.grid)
-        # except Exception as e:
-        #     print("Error finding path:", e)
-        #     return None
+        
+        grid = copy.copy(self.grid)
+        
+        nodepath = None
+        
+        while nodepath is None:
+            try:
+                nodepath, runs = self.pathfinder.find_path(start=grid.node(pop.location[0], pop.location[1]), end=grid.node(target_location[0], target_location[1]), graph=grid)
+            except Exception as e:
+                self.logger.log("Error finding path:", e)
+        
+        if len(nodepath) == 0:
+            self.used_grid = grid
+            # self.render_mode = MapRenderType.PATHFINDING
         
         path = Path(pop)
         
-        print("Created path for pop:", pop.id, "to tile:", target_location, "with length:", len(nodepath))
+        self.logger.log("Created path for pop:", pop.id, pop.location, "to tile:", target_location, "with length:", len(nodepath))
         
         for node in nodepath:
             x = node.x
@@ -405,9 +472,6 @@ class World(RenderableObserver):
         self.pathfinder_prepped = True
     
     def update(self):
-        # Update the world state for a new simulation step
-        
-        # Trigger updates for all pops in the world
         PopManager().update()
         
         PopMoveManager().handle_moves()

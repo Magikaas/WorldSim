@@ -1,5 +1,6 @@
+from .entity import Entity
 from .pop import Pop
-from .woodresource import WoodResource, TreeGrowthSpeed
-from .appletree import AppleTree
-from .cactus import Cactus
 from .animal import Animal
+from .building import Building
+from .resourcenode import ResourceNode
+from .harvestable import Harvestable

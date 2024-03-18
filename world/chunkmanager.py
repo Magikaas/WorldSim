@@ -43,15 +43,15 @@ class ChunkManager:
     def get_chunk_at(self, location) -> Chunk:
         return self.chunks[int((location[0] - (location[0] % self.chunk_size)) / self.chunk_size)][int((location[1] - (location[1] % self.chunk_size)) / self.chunk_size)]
     
-    def get_chunks_to_render(self) -> List[Chunk]:
-        chunks = []
+    def get_dirty_chunks(self) -> List[List[Chunk]]:
+        dirty_chunks = []
         for chunk_row in self.chunks:
+            dirty_row = []
             for chunk in chunk_row:
                 if chunk.dirty:
-                    chunks.append(chunk)
-                # else:
-                #     print("Skipped chunk ", chunk.get_location())
-        return chunks
+                    dirty_row.append(chunk)
+            dirty_chunks.append(dirty_row)
+        return dirty_chunks
     
     def get_chunk(self, location) -> Chunk:
         chunk_x = int(location[0] / self.chunk_size) % len(self.chunks)

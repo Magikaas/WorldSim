@@ -1,16 +1,17 @@
 from __future__ import annotations
-
-from typing import List
+from typing import List, TYPE_CHECKING
 from pathfinding.core.node import Node
 
-from obj.worldobj.worldobjecttype.resourcenode import ResourceNode
-from obj.worldobj.pop import Pop
-from obj.worldobj.worldobjecttype import Building
 
 from .biome import Biome
 from .terrain import Terrain
 
 from observer import Subject
+
+if TYPE_CHECKING:
+    import obj.worldobj.resourcenode
+    import obj.worldobj.pop
+    import obj.worldobj
 
 class Tile(Subject):
     def __init__(self, location: tuple, local_coordinates: tuple, terrain: Terrain, biome: Biome):
@@ -43,7 +44,7 @@ class Tile(Subject):
         self.local_coordinates = local_coordinates
         self.notify_observers()
     
-    def get_pops(self) -> List[Pop]:
+    def get_pops(self) -> List[obj.worldobj.pop.Pop]:
         return self.pops
     
     def add_pop(self, pop):
@@ -77,7 +78,7 @@ class Tile(Subject):
         
         self.animals.remove(animal)
     
-    def get_resourcenode(self) -> ResourceNode:
+    def get_resourcenode(self) -> obj.worldobj.resourcenode.ResourceNode:
         return self.resourcenode
     
     def add_resourcenode(self, node):
@@ -94,10 +95,10 @@ class Tile(Subject):
             self.notify_observers()
             self.resourcenode = None
     
-    def build(self, building: Building):
+    def build(self, building: obj.worldobj.Building):
         self.building = building
     
-    def get_building(self) -> Building:
+    def get_building(self) -> obj.worldobj.Building:
         return self.building
     
     def remove_building(self):

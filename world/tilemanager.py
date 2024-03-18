@@ -37,13 +37,15 @@ class TileManager:
     def get_tiles(self) -> List[Tile]:
         return self.tiles
     
-    def get_tiles_to_render(self) -> List[Tile]:
-        tiles = []
+    def get_dirty_tiles(self) -> List[Tile]:
+        dirty_tiles = []
         for tile_row in self.tiles:
+            dirty_row = []
             for tile in tile_row:
                 if tile.dirty:
-                    tiles.append(tile)
-        return tiles
+                    dirty_row.append(tile)
+            dirty_tiles.append(dirty_row)
+        return dirty_tiles
     
     def get_tile(self, location) -> Tile:
         return self.tiles[location[0]][location[1]]

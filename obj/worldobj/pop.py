@@ -1,20 +1,21 @@
 from __future__ import annotations
 from typing import List
-
-import random
-
 from enum import Enum
+
+import random, copy
 
 from managers.pop_move_manager import PopMoveManager
 from managers.pop_goal_manager import PopGoalManager
 
 from path.popmove import PopMove
-from .worldobjecttype.entity import Entity, EntityState
-from .woodresource import WoodResource
+from .entity import Entity, EntityState
 
-from ai.goal import GatherGoal
+from ai.goal import GatherGoal, FoodGoal, BuildGoal
 
-from obj.item import Wood, ItemStack
+from obj.item import Item, Wood, ItemStack, Container, LiquidContainer
+from obj.worldobj.building import Building, Hut
+
+from obj.worldobj.resourcenode import WoodResource
 
 class PopGoal:
     NONE = 0
@@ -32,14 +33,7 @@ class PopGoal(Enum):
 
 class Pop(Entity):
     def __init__(self, id, name, location, world, age=0, role='worker', health=100, food=100, water=100, state=EntityState.IDLE, speed=1):
-        super().__init__(id, name, location, world)
-        self.role = role
-        self.age = age
-        self.health = health
-        self.food = food
-        self.water = water
-        self.state = state
-        self.speed = speed
+        super().__init__(id, name, location, world, age, role, health, food, water, state, speed)
         self.carry_weight = 10
         self.colour = (random.randint(0,255), random.randint(0,255), random.randint(0,255))
         
@@ -49,9 +43,11 @@ class Pop(Entity):
         
         self.path = None
         
-        self.state = EntityState.IDLE
-        
         self.pop_goal_manager = PopGoalManager(self)
+    
+    def initialise_default_goals(self):
+        self.add_goal(FoodGoal(self))
+        self.add_goal(BuildGoal(entity=self, building=Hut(), target_location=(0, 0)))
     
     def move_to_world(self, world):
         self.world = world
@@ -69,14 +65,22 @@ class Pop(Entity):
     
     def determineState(self):
         if self.water <= 25:
-            self.state = EntityState.FIND_WATER
+            self.set_state(EntityState.FIND_WATER)
         elif self.food <= 25:
-            self.state = EntityState.FIND_FOOD
+            self.set_state(EntityState.FIND_FOOD)
         else:
-            self.state = EntityState.IDLE
+            self.set_state(EntityState.IDLE)
     
-    def wander(self):
-        self.state = EntityState.WANDERING
+    def wander(self, wander_distance: int):
+        self.set_state(EntityState.WANDERING)
+        self.wander_distance = wander_distance
+    
+    def add_goal(self, goal: PopGoal):
+        self.pop_goal_manager.add_goal(goal)
+    
+    def set_state(self, state):
+        self.previous_state = copy.copy(self.state)
+        self.state = state
     
     def set_location(self, location):
         self.location = location
@@ -86,7 +90,7 @@ class Pop(Entity):
             print("Attempted to add empty path to pop %s" % self.name)
             return
         self.path = path
-        self.state = EntityState.PATHING
+        self.set_state(EntityState.PATHING)
     
     def has_path(self):
         return self.path is not None
@@ -95,7 +99,7 @@ class Pop(Entity):
         self.goal = goal
     
     def get_goal(self):
-        return self.goal
+        return self.pop_goal_manager.get_current_goal()
     
     def has_pending_move(self):
         return PopMoveManager().get_move_for_pop(self) is not None
@@ -107,170 +111,44 @@ class Pop(Entity):
         return self.inventory
     
     def add_item(self, itemstack: ItemStack):
-        self.inventory.add_item(itemstack.item, itemstack.amount)
+        self.inventory.add_item(itemstack)
     
     def update(self):
-        if self.inventory.get_quantity(Wood()) < 20:
-            # If the pop does not have the goal, add it
-            goal = GatherGoal(self, itemstack=ItemStack(Wood(), 5))
-            
-            if goal not in self.pop_goal_manager.goals:
-                self.pop_goal_manager.add_goal(goal)
+        # print("Updating pop %s" % (self.name))
         
         self.pop_goal_manager.perform_goals()
         
         return True
-        
-        # Update logic for aging, health changes, skill improvements, etc.
-        self.age += 1
-        if self.food <= 0:
-            self.health -= 1
-            
-        if self.water <= 0:
-            self.health -= 1
-        
-        if self.health <= 0:
-            self.state = EntityState.DEAD
-            print("Pop %s has died" % self.name)
-            return
-        
-        
-        if self.has_pending_move() == False:
-            if self.has_path() and len(self.path.moves) > 0:
-                # Move along the path
-                next_move = self.path.moves.pop(0)
-                
-                if len(self.path.moves) == 0:
-                    self.path = None
-                
-                popmove = next_move
-                PopMoveManager().move_pop(popmove=popmove)
-            elif self.state == EntityState.WANDERING:
-                if self.wander_distance > 0:
-                    xDiff = 0
-                    yDiff = 0
-                    
-                    while xDiff == 0 and yDiff == 0:
-                        # Move in a random direction
-                        xDiff = random.randint(-1 * self.speed, self.speed)
-                        yDiff = random.randint(-1 * self.speed, self.speed)
-                    
-                    destination_coords = (self.location[0] + xDiff, self.location[1] + yDiff)
-                    destination_tile = self.world.get_tile(location=destination_coords)
-                    
-                    popmove = PopMove(self, destination_tile=destination_tile)
-                    PopMoveManager().move_pop(popmove=popmove)
-                    self.wander_distance -= 1
-                else:
-                    self.state = EntityState.IDLE
-            else:
-                # No moves to handle, no pathing to do, not wandering looking for resources
-                if self.get_goal() == EntityState.GATHERING:
-                    # Start gathering resources
-                    current_tile = self.world.get_tile(self.location)
-                    
-                    resourcenode = current_tile.get_resourcenode()
-                    if resourcenode is not None:
-                        self.state = EntityState.HARVESTING
-                    else:
-                        self.set_goal(PopGoal.NONE)
-                        self.state = EntityState.IDLE
-                else:
-                    self.state = EntityState.IDLE
-        
-        # Update logic for the pop's current state
-        if self.state == EntityState.IDLE:
-            tiles = self.world.find_tiles_with_resourcenodes_near(location=self.location, distance=5, resourcenode_type=WoodResource)
-            
-            if len(tiles) == 0:
-                # If we can't find tiles with nodes nearby, wander around for 5 cycles and search again
-                self.state = EntityState.WANDERING
-                self.wander_distance = 5
-            else:
-                # We found one or more tiles with resource nodes, figure out which is closest and move toward it
-                closest_tile = None
-                
-                for tile in tiles:
-                    if closest_tile is None:
-                        closest_tile = tile
-                    else:
-                        if self.world.get_distance_between(self.location, tile.location) < self.world.get_distance_between(self.location, closest_tile.location):
-                            closest_tile = tile
-                
-                # Move to the closest node
-                path = self.world.pathfind(self, closest_tile.location)
-                
-                self.set_path(path)
-                self.set_goal(PopGoal.GATHER, self)
-                return
-        elif self.state == EntityState.WORKING:
-            # Do work
-            pass
-        elif self.state == EntityState.MOVING:
-            # Move to a new location
-            pass
-        elif self.state == EntityState.SLEEPING:
-            # Rest
-            pass
-        elif self.state == EntityState.EATING:
-            # Eat
-            pass
-        elif self.state == EntityState.FIND_FOOD:
-            # Find food
-            pass
-        elif self.state == EntityState.FIND_WATER:
-            # Find water
-            pass
-        elif self.state == EntityState.FIND_SHELTER:
-            # Find shelter
-            pass
-        elif self.state == EntityState.DEAD:
-            # Do nothing
-            pass
-        elif self.state == EntityState.GATHERING:
-            # Harvest resources
-            current_tile = self.world.get_tile(self.location)
-            
-            resourcenode = current_tile.get_resourcenode()
-            harvest_result = resourcenode.harvest()
-            
-            resource = harvest_result[0]
-            amount = harvest_result[1]
-            
-            
-        else:
-            # Do nothing
-            pass
 
 class Inventory:
     def __init__(self):
-        self.items = []
+        self.items = {}
     
-    def get_items(self) -> List[ItemStack]:
+    def get_items(self) -> dict[Item, ItemStack]:
         return self.items
     
-    def add_item(self, item, quantity=1):
+    def add_item(self, added_item: ItemStack):
         for item in self.items:
-            if item.item == item:
-                item.amount += quantity
+            if item == added_item.item:
+                self.items[item].amount += added_item
                 return
+        
+        if added_item.item not in self.items:
+            self.items[added_item.item] = added_item
 
-    def remove_item(self, item, quantity=1):
-        for item in self.items:
-            if item.item == item:
-                if item.amount <= 0:
-                    print("Attempting to remove item from inventory with 0 or less quantity")
-                    return
-                
-                item.amount -= quantity
-                return
+    def remove_item(self, itemstack: ItemStack):
+        if itemstack.item not in self.items:
+            print("Attempting to remove an item from inventory that is not present")
+            return
+        
+        if self.items[itemstack.item] < itemstack.amount:
+            print("Attempting to remove more of an item from inventory than is present")
+            return
+        
+        self.items[itemstack.item].amount -= itemstack.amount
 
     def get_quantity(self, item):
-        for item in self.items:
-            if item.item == item:
-                return item.amount
-        
-        return 0
+        return self.items[item].amount if item in self.items else 0
 
     def __str__(self):
         return str(self.items)

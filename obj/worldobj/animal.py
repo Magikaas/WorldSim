@@ -1,7 +1,7 @@
 import numpy as np
-from world.worldobject import WorldObject
+from .entity import Entity
 
-class Animal(WorldObject):
+class Animal(Entity):
     def __init__(self, species, location, health, food_value):
         self.species = species
         self.location = location

@@ -1,8 +1,8 @@
-# Using cProfile
 import cProfile
 import pstats
 import pygame
 import random
+import os
 
 # examples/generate_world.py
 from world.world import World
@@ -11,14 +11,20 @@ from managers.pop_move_manager import PopMoveManager
 
 from utils.renderoutput import RenderOutput
 
+from utils.logger import Logger
+
 import os
+    
+logger = Logger("general")
 
 def run_simulation(world: World, max_iterations=1000, render=False, render_frequency=1000):
     step_nr = 0
     
     sim_seed = world.get_seed()
     
-    scale = 5
+    scale = 10
+    
+    pygame.init()
     
     if render:
         clock = pygame.time.Clock()
@@ -32,10 +38,17 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
         
         surface = pygame.Surface(world_size)
     
+    font = pygame.font.SysFont('robotoregular', 16)
+    world.set_font(font)
+    # clear = lambda: os.system('cls')
+    
+    paused = False
+    
     for iteration in range(max_iterations):
+        # clear()
         if render:
             pygame.event.get()
-            # clock.tick(1)
+            # clock.tick(15)
         
         step_nr += 1
         
@@ -61,19 +74,41 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
                 if os.path.exists("output/" + str_seed) == False:
                     os.mkdir("output/" + str_seed)
                 
-                print("Writing map file to " + filename)
+                logger.log("Writing map file to ", filename)
                 
                 surface = world.render(surface=surface, scale=scale, output=RenderOutput.FILE)
+            
+            # Show state of each pop on screen
+            for pop in PopManager().get_pops():
+                pop_location = pop.location
+                pop_location = (pop_location[0] * scale, pop_location[1] * scale)
                 
+                text = font.render(pop.state, True, (255, 255, 255))
+                
+                window.blit(text, pop_location)
+                
+                # Show the pop's current goal
+                goal = pop.get_goal()
+                
+                goal_location = (pop_location[0], pop_location[1] + 20)
+                
+                goal_string = goal.type if goal is not None else "None"
+                
+                goal_text = font.render(goal_string, True, (255, 255, 255))
+                
+                window.blit(goal_text, goal_location)
+                
+                pygame.display.flip()
         
         if iteration % render_frequency == 0:
-            print(f"Iteration {iteration}")
+            logger.log(f"Iteration {iteration}")
         
         # Update the world state, which includes updating all pops within it
-        world.update()
+        if not paused:
+            world.update()
 
         if check_end_conditions(world) and False:
-            print(f"Simulation ended at iteration {iteration}")
+            logger.log(f"Simulation ended at iteration {iteration}")
             break
 
         # Example: You could add new pops or change the world based on specific conditions
@@ -90,9 +125,9 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    world_width = 256
-    world_height = 256
-    initial_pop_count = 10
+    world_width = 128
+    world_height = 128
+    initial_pop_count = 1
     seed = 1000
     chunk_size = 16
     
@@ -128,9 +163,9 @@ def main():
     
     do_render = True # Set to True to render each step of the simulation to an image file
 
-    run_simulation(world, max_iterations=2500, render=do_render, render_frequency=250)
+    run_simulation(world, max_iterations=1200, render=do_render, render_frequency=250)
 
-    print("Simulation complete")
+    logger.log("Simulation complete")
 
 profile = True # Profile the code using cProfile
 if __name__ == "__main__":
