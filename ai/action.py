@@ -21,7 +21,7 @@ class ActionState(Enum):
 
 class Action(ABC):
     def __init__(self, name: str, entity: Entity, parent_action=None):
-        # self.logger.log("Initialising action %s for entity %s" % (name, entity.name))
+        # self.logger.debug("Initialising action %s for entity %s" % (name, entity.name))
         self.name = name
         self.parent_action = parent_action
         
@@ -42,18 +42,18 @@ class Action(ABC):
         self.determine_actions()
     
     def deactivate(self):
-        self.logger.log("Deactivating action %s" % self.name)
+        self.logger.debug("Deactivating action %s" % self.name)
         self.state = ActionState.INACTIVE
     
     def activate(self):
-        self.logger.log("Activating action %s" % self.name)
+        self.logger.debug("Activating action %s" % self.name)
         self.state = ActionState.ACTIVE
     
     def is_active(self):
         return self.state == ActionState.ACTIVE
     
     def finish(self):
-        self.logger.log("Finishing action %s" % self.name)
+        self.logger.debug("Finishing action %s" % self.name)
         self.state = ActionState.DONE
     
     def is_finished(self):
@@ -62,16 +62,16 @@ class Action(ABC):
     def execute(self):
         self.retries += 1
         
-        # self.logger.log("Entity %s is executing action %s" % (self.entity.name, self.name))
+        # self.logger.debug("Entity %s is executing action %s" % (self.entity.name, self.name))
         
-        if not self.check_prep_conditions():
+        if not self.is_active() and not self.is_finished() and not self.check_prep_conditions():
             if self.retries > 5:
-                self.logger.log("Entity %s failed to execute action %s after %s retries" % (self.entity.name, self.name, self.retries))
-                
                 if self.check_post_conditions():
                     self.finish()
                     return True
                 
+                if self.retries > 50:
+                    self.logger.debug("Entity %s failed to execute action %s after %s retries" % (self.entity.name, self.name, self.retries))
                 return False
             return False
         
@@ -146,7 +146,7 @@ class CompositeAction(Action):
         return self.check_post_conditions()
     
     def update(self) -> bool:
-        # self.logger.log("Updating composite action %s" % self.name)
+        # self.logger.debug("Updating composite action %s" % self.name)
         
         result = True
         
@@ -193,7 +193,7 @@ class MoveAction(Action):
             location = self.entity.world.find_closest_location(self.entity.location, locations, self.entity)
         
         if location is None:
-            self.logger.log("No location found for " + self.entity.name)
+            self.logger.debug("No location found for " + self.entity.name)
             return False
         
         destination_tile = world.get_tile(location)
@@ -213,7 +213,7 @@ class MoveAction(Action):
         move = self.path.moves[0]
         
         if move.is_done():
-            # self.logger.log("Entity %s moved to %s" % (self.entity.name, move.destination_tile.location))
+            # self.logger.debug("Entity %s moved to %s" % (self.entity.name, move.destination_tile.location))
             PopMoveManager().move_pop_to_tile(pop=move.pop, destination=move.destination_tile)
             self.path.moves = self.path.moves[1:]
             return
@@ -221,9 +221,10 @@ class MoveAction(Action):
         move.progress_move()
 
 class BuildAction(Action):
-    def __init__(self, entity: Entity, building: Building, parent_action: CompositeAction = None):
+    def __init__(self, entity: Entity, building: Building, target_tile, parent_action: CompositeAction = None):
         self.building = building
         self.pop_state = EntityState.BUILDING
+        self.target_tile = target_tile
         
         super().__init__(name="build", entity=entity, parent_action=parent_action)
     
@@ -235,13 +236,11 @@ class BuildAction(Action):
             for m in self.building.materials:
                 self.add_prep_condition(HasItemsCondition(entity=self.entity, item=m))
         
-        building_tile = self.entity.world.get_tile(self.entity.location)
-        
-        self.add_prep_condition(BuildingExistsCondition(building=self.building, location=building_tile).invert())
-        self.add_post_condition(BuildingExistsCondition(building=self.building, location=building_tile))
+        self.add_prep_condition(BuildingExistsCondition(building=self.building, location=self.target_tile).invert())
+        self.add_post_condition(BuildingExistsCondition(building=self.building, location=self.target_tile))
     
     def start(self):
-        self.logger.log("Entity %s is building %s" % (self.entity.name, self.building.name))
+        self.logger.debug("Entity %s is building %s" % (self.entity.name, self.building.name))
         return True
     
     def update(self):
@@ -249,7 +248,8 @@ class BuildAction(Action):
         
         world = self.entity.world
         tile = world.get_tile(self.entity.location)
-        tile.build(self.building)
+        
+        tile.build(self.building, self.entity)
         
         if self.entity.state == EntityState.IDLE:
             self.finish()
@@ -313,7 +313,7 @@ class LocateResourceAction(Action):
             if closest_tile is not None:
                 Blackboard().add_resource_location(resource=self.resource, location=closest_tile.location)
             else:
-                self.logger.log("%s found no resource tiles for %s near location %s" % (self.entity.name, self.resource.name, str(self.entity.location)))
+                self.logger.debug("%s found no resource tiles for %s near location %s" % (self.entity.name, self.resource.name, str(self.entity.location)))
                 return False
         
         self.closest_tile = closest_tile

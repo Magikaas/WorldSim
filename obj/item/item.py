@@ -14,6 +14,9 @@ class Item:
         self.durability = durability
         
         self.requires_container = False
+    
+    def __hash__(self):
+        return hash(self.name)
 
 # Not an actual item, but an indicator that this variable's value is on the Blackboard linked to the Action it is used in
 class BlackboardItem:
@@ -105,6 +108,9 @@ class ItemStack:
     def __init__(self, item, amount=1):
         self.item = item
         self.amount = amount
+    
+    def __str__(self) -> str:
+        return f'{self.amount} {self.item.name}'
     
     def take(self, amount=1):
         if amount > self.amount:

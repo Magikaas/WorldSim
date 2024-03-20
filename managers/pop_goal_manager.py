@@ -9,6 +9,7 @@ class PopGoalManager:
     def __init__(self, pop):
         self.goals = []
         self.active_action = None
+        self.pop = pop
     
     def add_goal(self, goal):
         self.goals.append(goal)

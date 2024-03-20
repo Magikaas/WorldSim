@@ -74,7 +74,7 @@ class PopManager():
         return pops
     
     def give_item_to_pop(self, pop: Pop, item):
-        self.logger.log("Giving %sx %s to pop %s" % (item.amount, item.item.name, pop.name))
+        self.logger.debug("Giving %sx %s to pop %s" % (item.amount, item.item.name, pop.name))
         pop.add_item(item)
         self.update_pop(pop)
     

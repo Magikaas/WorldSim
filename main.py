@@ -98,6 +98,22 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
                 
                 window.blit(goal_text, goal_location)
                 
+                # Show the pop's inventory
+                inventory = pop.get_inventory()
+                
+                x = 40
+                
+                items = inventory.get_items()
+                
+                for item_name in items:
+                    inventory_location = (pop_location[0], pop_location[1] + x)
+                    
+                    inventory_text = font.render(str(items[item_name]), True, (255, 255, 255))
+                    
+                    window.blit(inventory_text, inventory_location)
+                    
+                    x += 20
+                
                 pygame.display.flip()
         
         if iteration % render_frequency == 0:
@@ -125,8 +141,8 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    world_width = 128
-    world_height = 128
+    world_width = 64
+    world_height = 64
     initial_pop_count = 1
     seed = 1000
     chunk_size = 16
@@ -161,9 +177,9 @@ def prep_simulation():
 def main():
     world = prep_simulation()
     
-    do_render = True # Set to True to render each step of the simulation to an image file
+    do_render = False # Set to True to render each step of the simulation to an image file
 
-    run_simulation(world, max_iterations=1200, render=do_render, render_frequency=250)
+    run_simulation(world, max_iterations=50000, render=do_render, render_frequency=1000)
 
     logger.log("Simulation complete")
 

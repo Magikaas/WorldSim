@@ -118,6 +118,10 @@ class Pop(Entity):
         
         self.pop_goal_manager.perform_goals()
         
+        if not self.pop_goal_manager.get_current_goal():
+            random_location = (random.randint(0, self.world.width - 1), random.randint(0, self.world.height - 1))
+            self.pop_goal_manager.add_goal(BuildGoal(entity=self, building=Hut(), target_location=random_location))
+        
         return True
 
 class Inventory:
@@ -129,26 +133,26 @@ class Inventory:
     
     def add_item(self, added_item: ItemStack):
         for item in self.items:
-            if item == added_item.item:
-                self.items[item].amount += added_item
+            if item == added_item.item.name:
+                self.items[item].amount += added_item.amount
                 return
         
-        if added_item.item not in self.items:
-            self.items[added_item.item] = added_item
+        if added_item.item.name not in self.items:
+            self.items[added_item.item.name] = added_item
 
     def remove_item(self, itemstack: ItemStack):
-        if itemstack.item not in self.items:
+        if itemstack.item.name not in self.items:
             print("Attempting to remove an item from inventory that is not present")
             return
         
-        if self.items[itemstack.item] < itemstack.amount:
+        if self.items[itemstack.item.name].amount < itemstack.amount:
             print("Attempting to remove more of an item from inventory than is present")
             return
         
-        self.items[itemstack.item].amount -= itemstack.amount
+        self.items[itemstack.item.name].amount -= itemstack.amount
 
     def get_quantity(self, item):
-        return self.items[item].amount if item in self.items else 0
+        return self.items[item.name].amount if item.name in self.items else 0
 
     def __str__(self):
         return str(self.items)

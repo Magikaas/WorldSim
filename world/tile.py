@@ -95,8 +95,19 @@ class Tile(Subject):
             self.notify_observers()
             self.resourcenode = None
     
-    def build(self, building: obj.worldobj.Building):
-        self.building = building
+    def build(self, building: obj.worldobj.Building, pop: obj.worldobj.pop.Pop):
+        inventory = pop.get_inventory()
+        
+        if building.can_build(inventory):
+            # Expend resources from inventory and build building
+            for material in building.get_required_items():
+                pop.inventory.remove_item(material)
+            
+            self.building = building
+            self.notify_observers()
+            return True
+        else:
+            return False
     
     def get_building(self) -> obj.worldobj.Building:
         return self.building

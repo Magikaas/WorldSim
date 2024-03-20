@@ -127,7 +127,7 @@ class World(RenderableObserver):
         elif terrain_value >= TerrainHeight.MOUNTAIN_PEAK:
             return MountainPeak()
         else:
-            self.logger.log("Invalid terrain value: " + str(terrain_value))
+            self.logger.debug("Invalid terrain value: " + str(terrain_value))
             return Unland()
     
     def get_biome_type_at(self, x, y) -> Biome:
@@ -153,7 +153,7 @@ class World(RenderableObserver):
         elif biome_type == BiomeType.DESERT:
             return Desert()
         else:
-            self.logger.log("Invalid biome type: " + biome_type)
+            self.logger.debug("Invalid biome type: " + biome_type)
             return None
     
     def get_harvestables(self):
@@ -209,7 +209,7 @@ class World(RenderableObserver):
                             failed_adding += 1
                             continue
         
-        self.logger.log("Failed adding resources:", failed_adding)
+        self.logger.debug("Failed adding resources:", failed_adding)
 
     def generate_animals(self):
         # TODO
@@ -309,6 +309,8 @@ class World(RenderableObserver):
                         
                         tile.mark_rendered()
                 chunk.mark_rendered()
+        
+        # pops = PopManager().get_pops()
         
         # for pop in pops:
         #     location = pop.location
@@ -431,7 +433,7 @@ class World(RenderableObserver):
             try:
                 nodepath, runs = self.pathfinder.find_path(start=grid.node(pop.location[0], pop.location[1]), end=grid.node(target_location[0], target_location[1]), graph=grid)
             except Exception as e:
-                self.logger.log("Error finding path:", e)
+                self.logger.debug("Error finding path:", e)
         
         if len(nodepath) == 0:
             self.used_grid = grid
@@ -439,7 +441,7 @@ class World(RenderableObserver):
         
         path = Path(pop)
         
-        self.logger.log("Created path for pop:", pop.id, pop.location, "to tile:", target_location, "with length:", len(nodepath))
+        self.logger.debug("Created path for pop:", pop.id, pop.location, "to tile:", target_location, "with length:", len(nodepath))
         
         for node in nodepath:
             x = node.x

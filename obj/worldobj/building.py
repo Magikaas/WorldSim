@@ -15,6 +15,12 @@ class Building(WorldObject):
     
     def get_required_items(self):
         return self.materials
+    
+    def can_build(self, inventory):
+        for material in self.materials:
+            if inventory.get_quantity(material.item) < material.amount:
+                return False
+        return True
 
 class Hut(Building):
     def __init__(self):

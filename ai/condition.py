@@ -92,9 +92,10 @@ class HasItemsCondition(Condition):
         if not inv_items:
             return False
         
-        for itemstack in inv_items:
-            if type(itemstack) == type(required_items.item):
-                if inv_items[itemstack].amount >= required_items.amount:
+        for item_name in inv_items:
+            itemstack = inv_items[item_name]
+            if item_name == required_items.item.name:
+                if itemstack.amount >= required_items.amount:
                     return True
                 else:
                     self.remaining_items.append(ItemStack(itemstack.item, required_items.amount - itemstack.amount))

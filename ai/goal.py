@@ -53,6 +53,10 @@ class Goal(ABC):
     
     def execute(self):
         for action in self.actions:
+            if not action.is_active() and not action.is_finished() and action.check_post_conditions():
+                action.finish()
+                continue
+            
             if action.is_finished():
                 continue
             
@@ -74,6 +78,9 @@ class Goal(ABC):
         return self.check_prep_conditions()
     
     def is_fulfilled(self):
+        if self.fulfilled:
+            return True
+        
         for condition in self.conditions["post"]:
             if not condition.check_condition():
                 return False
@@ -106,12 +113,13 @@ class BuildGoal(Goal):
     
     def determine_actions(self):
         materials = self.building.materials
+        tile = self.entity.world.get_tile(self.target_location)
         
         for material in materials:
             self.actions.append(GatherAction(entity=self.entity, resource=material))
         
         self.actions.append(MoveAction(location=self.target_location, entity=self.entity))
-        self.actions.append(BuildAction(entity=self.entity, building=self.building))
+        self.actions.append(BuildAction(entity=self.entity, building=self.building, target_tile=tile))
 
 class GatherGoal(Goal):
     def __init__(self, entity: Entity, itemstack: ItemStack):

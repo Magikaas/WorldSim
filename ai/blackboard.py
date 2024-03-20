@@ -62,7 +62,7 @@ class Blackboard:
             self._data["resource_location:" + resource.name] = []
         
         if location not in self._data["resource_location:" + resource.name]:
-            self.logger.log("Found resource '%s' at %s" % (resource.name, location))
+            self.logger.debug("Found resource '%s' at %s" % (resource.name, location))
             self._data["resource_location:" + resource.name].append(location)
     
     def remove_resource_location(self, resource, location):
