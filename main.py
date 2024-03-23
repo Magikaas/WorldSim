@@ -3,6 +3,8 @@ import pstats
 import pygame
 import random
 import os
+import io
+import time
 
 # examples/generate_world.py
 from world.world import World
@@ -141,9 +143,9 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    world_width = 64
-    world_height = 64
-    initial_pop_count = 1
+    world_width = 512
+    world_height = 512
+    initial_pop_count = 4
     seed = 1000
     chunk_size = 16
     
@@ -195,8 +197,16 @@ if __name__ == "__main__":
         profiler.enable()
         main()
         profiler.disable()
-        stats = pstats.Stats(profiler).sort_stats('cumtime')
-        stats.print_stats()
+        # stats = pstats.Stats(profiler).sort_stats('cumtime')
+        
+        s = io.StringIO()
+        
+        timestamp = str(int(time.time()))
+        
+        # stats.print_stats()
+        with open("profile/" + timestamp + ".txt", "w") as f:
+            stats = pstats.Stats(profiler, stream=f).sort_stats('cumtime')
+            stats.print_stats()
     else:
         main()
 

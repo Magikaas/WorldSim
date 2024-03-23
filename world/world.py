@@ -363,13 +363,16 @@ class World(RenderableObserver):
         
         return search_chunks
     
-    def find_closest_location(self, start: tuple, location_list: List[tuple], entity) -> tuple:
+    def find_closest_location(self, start: tuple, location_list: List[tuple], entity, max_distance: int = 25) -> tuple:
         closest_location = None
         closest_distance = 1000
         
         use_pathfinding = True
         
         for location in location_list:
+            if self.get_distance_between(start, location) > max_distance:
+                continue
+            
             if use_pathfinding:
                 path = self.pathfind(entity, location)
                 distance = len(path.moves)

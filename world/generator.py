@@ -4,9 +4,6 @@ import os
 from pynoise.noisemodule import Perlin
 from pynoise.noiseutil import noise_map_plane
 
-from pynoise.noiseutil import terrain_gradient
-from pynoise.noiseutil import RenderImage
-
 import numpy as np
 
 class MapGenerator:
