@@ -4,17 +4,11 @@ from world.worldobject import WorldObject, WORLD_OBJECT_TYPE
 from obj.item import ItemStack, Wood, Stone
 
 class Building(WorldObject):
-    def __init__(self, name, description, materials=List[ItemStack]):
+    def __init__(self, name, description, materials:List[ItemStack]):
         self.name = name
         self.description = description
         self.type = WORLD_OBJECT_TYPE.BUILDING
         self.materials = materials
-    
-    def get_type(self):
-        return self.type
-    
-    def get_required_items(self):
-        return self.materials
     
     def can_build(self, inventory):
         for material in self.materials:

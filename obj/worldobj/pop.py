@@ -1,26 +1,24 @@
 from __future__ import annotations
-from typing import List
+from re import I
+from typing import TYPE_CHECKING
 from enum import Enum
 
-import random, copy
+import random
 
-from managers.pop_move_manager import PopMoveManager
+from managers.pop_move_manager import pop_move_manager as PopMoveManagerInstance
 from managers.pop_goal_manager import PopGoalManager
 
-from path.popmove import PopMove
 from .entity import Entity, EntityState
 
-from ai.goal import GatherGoal, FoodGoal, BuildGoal
+from ai.goal import FoodGoal, BuildGoal
 
-from obj.item import Item, Wood, ItemStack, Container, LiquidContainer
-from obj.worldobj.building import Building, Hut
+from obj.item import Item, ItemStack, Food
+from obj.worldobj.building import Hut
 
-from obj.worldobj.resourcenode import WoodResource
+from utils.logger import Logger
 
-class PopGoal:
-    NONE = 0
-    GATHER = 1
-    RETURN_FOUND = 2
+if TYPE_CHECKING:
+    import world
 
 class PopGoal(Enum):
     NONE = 0            # nothing to do
@@ -32,6 +30,8 @@ class PopGoal(Enum):
     # HUNT = 4          # Hunt animals
 
 class Pop(Entity):
+    world: world.World
+    
     def __init__(self, id, name, location, world, age=0, role='worker', health=100, food=100, water=100, state=EntityState.IDLE, speed=1):
         super().__init__(id, name, location, world, age, role, health, food, water, state, speed)
         self.carry_weight = 10
@@ -44,32 +44,15 @@ class Pop(Entity):
         self.path = None
         
         self.pop_goal_manager = PopGoalManager(self)
+        
+        self.logger = Logger(name)
     
     def initialise_default_goals(self):
         self.add_goal(FoodGoal(self))
-        self.add_goal(BuildGoal(entity=self, building=Hut(), target_location=(0, 0)))
+        self.add_goal(BuildGoal(entity=self, building=Hut(), target_location=(random.randint(0, self.world.width-1), random.randint(0, self.world.height-1))))
     
     def move_to_world(self, world):
         self.world = world
-    
-    def getStates(self):
-        # Pop state is a bitmap of states
-        # We need to return a list of states based on current state value
-        states = []
-        
-        for state in EntityState.__dict__:
-            if self.state & EntityState.__dict__[state]:
-                states.append(state)
-        
-        return states
-    
-    def determineState(self):
-        if self.water <= 25:
-            self.set_state(EntityState.FIND_WATER)
-        elif self.food <= 25:
-            self.set_state(EntityState.FIND_FOOD)
-        else:
-            self.set_state(EntityState.IDLE)
     
     def wander(self, wander_distance: int):
         self.set_state(EntityState.WANDERING)
@@ -78,58 +61,72 @@ class Pop(Entity):
     def add_goal(self, goal: PopGoal):
         self.pop_goal_manager.add_goal(goal)
     
-    def set_state(self, state):
-        self.previous_state = copy.copy(self.state)
-        self.state = state
-    
-    def set_location(self, location):
-        self.location = location
-    
-    def set_path(self, path):
-        if len(path.moves) == 0:
-            print("Attempted to add empty path to pop %s" % self.name)
-            return
-        self.path = path
-        self.set_state(EntityState.PATHING)
-    
     def has_path(self):
         return self.path is not None
     
-    def set_goal(self, goal: PopGoal):
-        self.goal = goal
-    
-    def get_goal(self):
-        return self.pop_goal_manager.get_current_goal()
-    
     def has_pending_move(self):
-        return PopMoveManager().get_move_for_pop(self) is not None
+        return PopMoveManagerInstance.get_move_for_pop(self) is not None
     
     def is_idle(self):
         return self.state == EntityState.IDLE
     
-    def get_inventory(self):
-        return self.inventory
-    
     def add_item(self, itemstack: ItemStack):
         self.inventory.add_item(itemstack)
     
-    def update(self):
-        # print("Updating pop %s" % (self.name))
+    def is_dead(self):
+        return self.health <= 0
+    
+    def eat_food(self, food: ItemStack):
+        self.logger.debug("Pop %s is eating %s" % (self.name, food.item.name))
+        self.inventory.remove_item(ItemStack(food.item, 1))
         
+        self.food += food.item.nutrition
+    
+    def update(self):
         self.pop_goal_manager.perform_goals()
         
         if not self.pop_goal_manager.get_current_goal():
             random_location = (random.randint(0, self.world.width - 1), random.randint(0, self.world.height - 1))
             self.pop_goal_manager.add_goal(BuildGoal(entity=self, building=Hut(), target_location=random_location))
         
+        # Count down food and water
+        if self.food > 0:
+            self.food -= 1
+            
+            if self.food % 25 == 0:
+                self.logger.debug("Pop %s food: %s" % (self.name, self.food))
+        
+        if self.water > 0:
+            self.water -= 1
+        
+        food_threshold = 100
+        
+        if self.food < food_threshold and self.inventory.has_food():
+            best_food = self.inventory.get_best_food_item()
+            
+            if best_food is not None:
+                food_threshold -= best_food.item.nutrition
+            
+            if self.food < food_threshold:
+                self.eat_food(best_food)
+        
+        # If food or water is empty, reduce health
+        # if self.food <= 0:
+        #     self.health -= 3
+        
+        # if self.water <= 0:
+        #     self.health -= 5
+        
+        # If health is empty, pop dies
+        if self.health <= 0:
+            self.logger.debug("Pop %s has died" % self.name)
+            pass
+            # self.world.remove_pop(self)
+        
         return True
 
 class Inventory:
-    def __init__(self):
-        self.items = {}
-    
-    def get_items(self) -> dict[Item, ItemStack]:
-        return self.items
+    items: dict[Item, ItemStack] = {}
     
     def add_item(self, added_item: ItemStack):
         for item in self.items:
@@ -150,7 +147,25 @@ class Inventory:
             return
         
         self.items[itemstack.item.name].amount -= itemstack.amount
-
+    
+    def has_item(self, item):
+        return item.name in self.items
+    
+    def has_food(self):
+        for item in self.items.values():
+            if issubclass(type(item.item), Food) and item.amount > 0:
+                return True
+        return False
+    
+    def get_best_food_item(self) -> ItemStack:
+        best_food = None
+        for itemstack in self.items.values():
+            item = itemstack.item
+            if issubclass(type(item), Food) and itemstack.amount > 0:
+                if best_food is None or item.nutrition > best_food.item.nutrition:
+                    best_food = itemstack
+        return best_food
+    
     def get_quantity(self, item):
         return self.items[item.name].amount if item.name in self.items else 0
 

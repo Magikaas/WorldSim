@@ -1,23 +1,25 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import List, TYPE_CHECKING
 
 from obj.item import Item, ItemStack
 
+from managers.pop_manager import pop_manager as PopManager
+
 from obj.worldobj.entity import Entity
 from obj.worldobj.building import Building
 
+from object_types import Location
 from utils.logger import Logger
 
-import managers.pop_manager
-
-from .blackboard import Blackboard
+from .blackboard import blackboard as Blackboard
 
 if TYPE_CHECKING:
     import world
     import world.tile
 
-class PropertyCheckOperator:
+class PropertyCheckOperator(Enum):
     EQUALS = "=="
     GREATER_THAN = ">"
     LESS_THAN = "<"
@@ -28,8 +30,6 @@ class Condition(ABC):
     def __init__(self, type: str):
         self.type = type
         self.inverted = False
-        
-        self.pop_manager = managers.pop_manager.PopManager()
         
         self.logger = Logger(type)
     
@@ -65,27 +65,24 @@ class SelectorCondition(Condition):
         self.conditions.append(condition)
 
 class OnLocationCondition(Condition):
-    def __init__(self, entity: Entity, location: world.tile.Tile):
+    def __init__(self, entity_id: int, location: Location|str):
         super().__init__(type="move")
-        self.entity = self.pop_manager.get_pop(entity.id)
+        self.entity = PopManager.get_pop(entity_id)
         self.location = location
     
     def check(self):
         return self.entity.location == self.location
 
 class HasItemsCondition(Condition):
-    def __init__(self, entity: Entity, item: List[ItemStack]):
+    def __init__(self, entity_id: int, item: ItemStack):
         super().__init__(type="has_items")
-        self.entity = self.pop_manager.get_pop(entity.id)
+        self.entity = PopManager.get_pop(entity_id)
         self.item = item
         self.remaining_items = []
     
-    def get_remaining_items(self):
-        return self.remaining_items
-    
     def check(self):
-        target_inventory = self.entity.get_inventory()
-        inv_items = target_inventory.get_items()
+        target_inventory = self.entity.inventory
+        inv_items = target_inventory.items
         
         required_items = self.item
         
@@ -104,53 +101,66 @@ class HasItemsCondition(Condition):
         return False
 
 class BuildingExistsCondition(Condition):
-    def __init__(self, building: Building, location: world.tile.Tile):
+    def __init__(self, building: Building, target_tile: world.tile.Tile):
         super().__init__(type="building_exists")
         self.building = building
-        self.location = location
+        self.target_tile = target_tile
     
     def check(self):
-        building = self.location.get_building()
-        
-        if building is None:
+        if not self.target_tile.has_building():
             return False
         
-        return building.get_type() == self.building.get_type()
+        building = self.target_tile.building
+        
+        return building.type == self.building.type
 
 class ResourceExistsCondition(Condition):
-    def __init__(self, resource: Item, location: world.tile.Tile):
+    def __init__(self, resource: Item, target_tile: world.tile.Tile):
         super().__init__(type="resource_exists")
         self.resource = resource
-        self.location = location
+        self.target_tile = target_tile
     
     def check(self):
-        resourcenode = self.location.get_resourcenode()
+        resourcenode = self.target_tile.resourcenode
         
         if resourcenode is None:
             return False
         
-        return resourcenode.get_resource_type() == self.resource
+        return resourcenode.harvestable_resource is self.resource
 
 class EntityPropertyCondition(Condition):
-    def __init__(self, entity: Entity, property: str, value, operator: PropertyCheckOperator = PropertyCheckOperator.EQUALS):
+    def __init__(self, entity_id: int, property: str, value, operator: PropertyCheckOperator = PropertyCheckOperator.EQUALS):
         super().__init__(type="entity_property")
-        self.entity = self.pop_manager.get_pop(entity.id)
+        self.entity = PopManager.get_pop(entity_id)
         self.property = property
         self.value = value
         self.operator = operator
     
     def check(self):
-        result = eval("self.entity." + self.property + " " + self.operator + " " + str(self.value))
+        result = eval("self.entity." + self.property + " " + self.operator.value + " " + str(self.value))
         return result
 
 class BlackboardContainsLocationCondition(Condition):
-    def __init__(self, resource: Item):
+    def __init__(self, resource: Item, entity_id: int, max_distance = 0):
         super().__init__(type="blackboard_contains_location")
         
         self.resource = resource
+        self.entity_id = entity_id
+        self.max_distance = max_distance
     
     def check(self):
-        resource_locations = Blackboard().get(key="resource_location:" + (self.resource if type(self.resource) == str else self.resource.name))
-        if resource_locations is None:
+        entity = PopManager.get_pop(self.entity_id)
+        
+        resource_locations = Blackboard.get(key="resource_location:" + str(self.resource if type(self.resource) == str else (self.resource.name if isinstance(self.resource, Item) else None)))
+        
+        if resource_locations is None or len(resource_locations) == 0:
             return False
-        return len(resource_locations) > 0
+        
+        if self.max_distance > 0:
+            for location in resource_locations:
+                distance = entity.world.get_distance_between(entity.location, location)
+                if distance <= self.max_distance:
+                    return True
+            return False
+        
+        return False

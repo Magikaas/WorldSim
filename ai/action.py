@@ -6,13 +6,15 @@ from obj.worldobj.entity import Entity, EntityState
 from obj.worldobj.building import Building
 
 from ai.condition import Condition, OnLocationCondition, HasItemsCondition, BuildingExistsCondition, BlackboardContainsLocationCondition
-from ai.blackboard import Blackboard
+from ai.blackboard import blackboard as Blackboard
 
-import managers.pop_manager
+from managers.pop_manager import pop_manager as PopManager
 
+from obj.worldobj.resourcenode import NoResource
+from object_types import Location
 from utils.logger import Logger
 
-from managers.pop_move_manager import PopMoveManager
+from managers.pop_move_manager import pop_move_manager as PopMoveManagerInstance
 
 class ActionState(Enum):
     INACTIVE = 0
@@ -25,7 +27,7 @@ class Action(ABC):
         self.name = name
         self.parent_action = parent_action
         
-        self.logger = Logger(name)
+        self.logger = Logger("action - %s" % name)
         
         self.pop_state = None
         
@@ -35,25 +37,29 @@ class Action(ABC):
         
         self.state = ActionState.INACTIVE
         
-        self.pop_manager = managers.pop_manager.PopManager()
-        self.entity = self.pop_manager.get_pop(entity.id)
+        self.entity = PopManager.get_pop(entity.id)
         
         self.determine_conditions()
         self.determine_actions()
     
     def deactivate(self):
-        self.logger.debug("Deactivating action %s" % self.name)
+        self.logger.info("Deactivating action %s" % self.name, actor=self.entity)
         self.state = ActionState.INACTIVE
     
     def activate(self):
-        self.logger.debug("Activating action %s" % self.name)
+        self.logger.info("Activating action %s" % self.name, actor=self.entity)
         self.state = ActionState.ACTIVE
     
     def is_active(self):
         return self.state == ActionState.ACTIVE
     
+    def reset(self):
+        self.logger.info("Resetting action %s" % self.name, actor=self.entity)
+        self.state = ActionState.INACTIVE
+        self.retries = 0
+    
     def finish(self):
-        self.logger.debug("Finishing action %s" % self.name)
+        self.logger.info("Finishing action %s" % self.name, actor=self.entity)
         self.state = ActionState.DONE
     
     def is_finished(self):
@@ -71,8 +77,7 @@ class Action(ABC):
                     return True
                 
                 if self.retries > 50:
-                    self.logger.debug("Entity %s failed to execute action %s after %s retries" % (self.entity.name, self.name, self.retries))
-                return False
+                    self.logger.error("Failed to execute action %s after %s retries" % (self.name, self.retries), actor=self.entity)
             return False
         
         if self.is_active():
@@ -80,24 +85,15 @@ class Action(ABC):
         
         self.activate()
         
-        prev_pop_state = self.entity.state
-        
-        if self.pop_state is not None:
-            self.entity.set_state(self.pop_state)
-        
         result = self.start()
         
-        self.entity.set_state(prev_pop_state)
-        
-        result = result and self.check_post_conditions()
-        
-        if result == True: 
+        if result == True:
             self.finish()
         
         return result
     
     def has_subactions(self):
-        return len(self.actions) > 0
+        return False
     
     def check_prep_conditions(self) -> bool:
         for condition in self.conditions["prep"]:
@@ -168,17 +164,21 @@ class CompositeAction(Action):
         if result:
             self.finish()
         return result
+    
+    def has_subactions(self):
+        return len(self.actions) > 0
 
 class MoveAction(Action):
-    def __init__(self, entity: Entity, location: tuple, parent_action: CompositeAction = None):
+    def __init__(self, entity: Entity, location: Location|str, parent_action: CompositeAction|None = None):
         self.location = location
-        self.path = None
         
         super().__init__(name="move", entity=entity, parent_action=parent_action)
+        
+        self.logger.debug("Creating move action to location %s" % str(location), actor=entity)
     
     def determine_conditions(self):
-        self.add_prep_condition(OnLocationCondition(entity=self.entity, location=self.location).invert())
-        self.add_post_condition(OnLocationCondition(entity=self.entity, location=self.location))
+        self.add_prep_condition(OnLocationCondition(entity_id=self.entity.id, location=self.location).invert())
+        self.add_post_condition(OnLocationCondition(entity_id=self.entity.id, location=self.location))
     
     def start(self):
         world = self.entity.world
@@ -187,41 +187,41 @@ class MoveAction(Action):
         locations = []
         
         if isinstance(location, str) and location.startswith("resource_location:"):
-            locations = Blackboard().get(entity=self.entity, action=self.parent_action, key=location)
+            locations = Blackboard.get(entity=self.entity, action=self.parent_action, key=location)
+            location = None
         
-        if len(locations) > 0:
-            location = self.entity.world.find_closest_location(self.entity.location, locations, self.entity)
+        if locations is not None and len(locations) > 0:
+            closest_location = self.entity.world.find_closest_location(self.entity.location, locations, self.entity)
+            
+            if closest_location is not None:
+                location = closest_location
         
         if location is None:
-            self.logger.debug("No location found for " + self.entity.name)
+            self.logger.debug("No location found", actor=self.entity)
             return False
         
         destination_tile = world.get_tile(location)
         
         path = world.pathfind(pop=self.entity, target_location=destination_tile.location)
-        self.path = path
-        return True
+        
+        self.logger.debug("Created path from", self.entity.location, "to tile:", destination_tile.location, "with length:", len(path.moves), actor=self.entity)
+        
+        PopMoveManagerInstance.empty_moves(self.entity)
+        
+        for move in path.moves:
+            PopMoveManagerInstance.move_pop(move)
+        
+        return False # We need to wait for the pop to move
     
     def update(self):
-        if self.path is None:
-            return False
+        move = PopMoveManagerInstance.get_move_for_pop(self.entity)
         
-        if len(self.path.moves) == 0:
+        if move is None:
             self.finish()
             return False
-        
-        move = self.path.moves[0]
-        
-        if move.is_done():
-            # self.logger.debug("Entity %s moved to %s" % (self.entity.name, move.destination_tile.location))
-            PopMoveManager().move_pop_to_tile(pop=move.pop, destination=move.destination_tile)
-            self.path.moves = self.path.moves[1:]
-            return
-        
-        move.progress_move()
 
 class BuildAction(Action):
-    def __init__(self, entity: Entity, building: Building, target_tile, parent_action: CompositeAction = None):
+    def __init__(self, entity: Entity, building: Building, target_tile, parent_action: CompositeAction|None = None):
         self.building = building
         self.pop_state = EntityState.BUILDING
         self.target_tile = target_tile
@@ -234,14 +234,14 @@ class BuildAction(Action):
     def determine_conditions(self):
         if len(self.building.materials) > 0:
             for m in self.building.materials:
-                self.add_prep_condition(HasItemsCondition(entity=self.entity, item=m))
+                self.add_prep_condition(HasItemsCondition(entity_id=self.entity.id, item=m))
         
-        self.add_prep_condition(BuildingExistsCondition(building=self.building, location=self.target_tile).invert())
-        self.add_post_condition(BuildingExistsCondition(building=self.building, location=self.target_tile))
+        self.add_prep_condition(BuildingExistsCondition(building=self.building, target_tile=self.target_tile).invert())
+        self.add_post_condition(BuildingExistsCondition(building=self.building, target_tile=self.target_tile))
     
     def start(self):
-        self.logger.debug("Entity %s is building %s" % (self.entity.name, self.building.name))
-        return True
+        self.logger.info("Building %s with %s" % (self.building.name, ', '.join([item.item.name + "x" + str(item.amount) for item in self.building.materials])), actor=self.entity)
+        return False # The building is not built yet
     
     def update(self):
         # TODO: Make building take time
@@ -258,7 +258,7 @@ class BuildAction(Action):
         return False
 
 class LocateResourceAction(Action):
-    def __init__(self, entity: Entity, resource: Item, parent_action: CompositeAction = None):
+    def __init__(self, entity: Entity, resource: Item, parent_action: CompositeAction|None = None):
         self.resource = resource
         self.closest_tile = None
         
@@ -268,24 +268,27 @@ class LocateResourceAction(Action):
     
     def determine_conditions(self):
         # Check if the blackboard has a location for the resource
-        self.add_prep_condition(BlackboardContainsLocationCondition(resource=self.resource).invert())
-        self.add_post_condition(BlackboardContainsLocationCondition(resource=self.resource))
+        max_distance = int(self.entity.world.width / 4)
+        self.add_prep_condition(BlackboardContainsLocationCondition(resource=self.resource, entity_id=self.entity.id, max_distance=max_distance).invert())
+        self.add_post_condition(BlackboardContainsLocationCondition(resource=self.resource, entity_id=self.entity.id, max_distance=max_distance))
     
     def start(self):
         world = self.entity.world
         
-        resource_tiles = world.find_tiles_with_resource_near(location=self.entity.location, resource_type=self.resource, distance=5)
+        resource_tiles = world.find_tiles_with_resource_near(location=self.entity.location, resource_type=self.resource, distance=25)
         
-        self.shortest_path_length = 0
+        self.shortest_path_length = 1000
         
         for tile in resource_tiles:
             path = world.pathfind(pop=self.entity, target_location=tile.location)
+            
+            Blackboard.add_resource_location(resource=self.resource, location=tile.location)
             
             if (len(path.moves) < self.shortest_path_length):
                 self.shortest_path_length = len(path.moves)
                 self.closest_tile = tile
         
-        return True
+        return self.closest_tile is not None
     
     def update(self):
         closest_tile = self.closest_tile
@@ -295,14 +298,14 @@ class LocateResourceAction(Action):
         
         if closest_tile is not None:
             # Add the tile to the blackboard for later actions
-            Blackboard().add_resource_location(resource=self.resource, location=closest_tile.location)
+            Blackboard.add_resource_location(resource=self.resource, location=closest_tile.location)
         else:
-            while closest_tile is None and search_distance < 125:
+            while closest_tile is None and search_distance < 95:
                 search_distance += 5
                 resource_tiles = world.find_tiles_with_resource_near(location=self.entity.location, resource_type=self.resource, distance=search_distance)
                 
                 for tile in resource_tiles:
-                    Blackboard().add_resource_location(resource=self.resource, location=tile.location)
+                    Blackboard.add_resource_location(resource=self.resource, location=tile.location)
                     
                     path = world.pathfind(pop=self.entity, target_location=tile.location)
                     
@@ -311,9 +314,9 @@ class LocateResourceAction(Action):
                         closest_tile = tile
             
             if closest_tile is not None:
-                Blackboard().add_resource_location(resource=self.resource, location=closest_tile.location)
+                Blackboard.add_resource_location(resource=self.resource, location=closest_tile.location)
             else:
-                self.logger.debug("%s found no resource tiles for %s near location %s" % (self.entity.name, self.resource.name, str(self.entity.location)))
+                # self.logger.warn("Found no resource tiles for %s near location %s" % (self.resource.name, str(self.entity.location)), actor=self.entity)
                 return False
         
         self.closest_tile = closest_tile
@@ -321,7 +324,7 @@ class LocateResourceAction(Action):
         self.finish()
 
 class HarvestAction(Action):
-    def __init__(self, entity: Entity, amount:int=0, parent_action: CompositeAction = None):
+    def __init__(self, entity: Entity, amount:int=0, parent_action: CompositeAction|None = None):
         super().__init__(name="harvest", entity=entity, parent_action=parent_action)
         
         self.amount = amount
@@ -334,13 +337,17 @@ class HarvestAction(Action):
         
         tile = world.get_tile(location)
         
-        resourcenode = tile.get_resourcenode()
+        resourcenode = tile.resourcenode
         
-        item = resourcenode.get_resource_type()
+        if type(resourcenode) == type(NoResource()):
+            self.logger.warn("No resource node found at location %s" % str(location), actor=self.entity)
+            return False
+        
+        item = resourcenode.harvestable_resource
         
         item_stack = ItemStack(item, self.amount)
         
-        managers.pop_manager.PopManager().give_item_to_pop(pop=self.entity, item=item_stack)
+        PopManager.give_item_to_pop(pop=self.entity, item=item_stack)
     
     def update(self):
         # TODO: Make harvesting take time
@@ -351,22 +358,26 @@ class HarvestAction(Action):
         return False
 
 class GatherAction(CompositeAction):
-    def __init__(self, entity: Entity, resource: ItemStack, parent_action: CompositeAction = None):
+    def __init__(self, entity: Entity, resource: ItemStack, parent_action: CompositeAction|None = None):
         self.resource = resource
         self.pop_state = EntityState.GATHERING
         
         super().__init__(name="gather", entity=entity, parent_action=parent_action)
+        
+        self.logger = Logger("action - %s" % (self.name))
     
     def determine_conditions(self):
-        self.add_prep_condition(HasItemsCondition(entity=self.entity, item=self.resource).invert())
-        self.add_post_condition(HasItemsCondition(entity=self.entity, item=self.resource))
+        self.add_prep_condition(HasItemsCondition(entity_id=self.entity.id, item=self.resource).invert())
+        self.add_post_condition(HasItemsCondition(entity_id=self.entity.id, item=self.resource))
     
     def determine_actions(self):
         item = self.resource.item if isinstance(self.resource, ItemStack) else self.resource
         amount = self.resource.amount if isinstance(self.resource, ItemStack) else self.resource
         
+        resource_key = ':'.join(["resource_location", item.category, item.name]) if isinstance(item, Item) else type(item)
+        
         self.add_action(LocateResourceAction(entity=self.entity, resource=item, parent_action=self))
-        self.add_action(MoveAction(entity=self.entity, location="resource_location:" + item.name))
+        self.add_action(MoveAction(entity=self.entity, location=resource_key, parent_action=self))
         self.add_action(HarvestAction(entity=self.entity, amount=amount, parent_action=self))
     
     def start(self) -> bool:
@@ -376,16 +387,14 @@ class GatherAction(CompositeAction):
         return super().update()
 
 class DrinkAction(Action):
-    def __init__(self, entity: Entity, parent_action: CompositeAction = None):
+    def __init__(self, entity: Entity, parent_action: CompositeAction|None = None):
         super().__init__(name="drink", entity=entity, parent_action=parent_action)
-        
-        self.pop_state = EntityState.DRINKING
     
     def start(self):
         tile = self.entity.world.get_tile(self.entity.location)
         
-        resourcenode = tile.get_resourcenode()
+        resourcenode = tile.resourcenode
         
-        water = resourcenode.get_resource_type()
+        water = resourcenode.harvestable_resource
         
-        self.entity.drink(water)
+        # self.entity.drink(water)

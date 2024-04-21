@@ -1,37 +1,24 @@
+from enum import Enum
+from attr import dataclass
+
+from object_types import Location
+
 class Temperature:
     COLD = -0.5
     NORMAL = 0
     HOT = 0.5
     
-class BiomeType:
+class BiomeType(Enum):
     TEMPERATE = 'Temperate'
     ARCTIC = 'Arctic'
     DESERT = 'Desert'
     TROPICAL = 'Tropical'
 
+@dataclass
 class Biome():
-    def __init__(self, name, colour, fertility=0):
-        self.name = name
-        self.colour = colour
-        self.fertility = fertility
-    
-    def get_name(self):
-        return self.name
-    
-    def set_name(self, name):
-        self.name = name
-    
-    def get_colour(self):
-        return self.colour
-    
-    def set_colour(self, colour):
-        self.colour = colour
+    name: str
+    colour: Location
+    fertility: int = 0
     
     def get_tree_spawn_chance(self):
-        return self.get_fertility * 50
-    
-    def get_fertility(self):
-        return self.fertility
-    
-    def set_fertility(self, fertility):
-        self.fertility = fertility
+        return self.fertility * 50

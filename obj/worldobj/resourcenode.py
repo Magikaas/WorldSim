@@ -36,6 +36,16 @@ class ResourceNode(WorldObject, Harvestable):
     def is_available(self):
         return self.resource_amount > 0
 
+class NoResource(ResourceNode):
+    def __init__(self):
+        super().__init__(name='no_resource', description='No resource', harvestable_resource=None, resource_amount=0)
+    
+    def harvest(self, amount):
+        return None
+    
+    def is_available(self):
+        return False
+
 # Enum with different growth speeds for trees
 class TreeGrowthSpeed:
     SLOW = 1

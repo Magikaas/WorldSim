@@ -2,3 +2,5 @@
 output/*
 map/*
 profile/*
+logs/*
+.vscode/*

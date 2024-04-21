@@ -5,13 +5,15 @@ if TYPE_CHECKING:
     import ai.blackboard
 
 class Item:
-    def __init__(self, name="NO NAME ENTERED", description="NO DESCRIPTION ENTERED", value=0, weight=0, protected=False, durability=25):
+    def __init__(self, name: str="NO NAME ENTERED", description: str="NO DESCRIPTION ENTERED", value: int=0, weight: int=0, protected: bool=False, durability: int=25):
         self.name = name
         self.description = description
         self.value = value
         self.weight = weight
         self.protected = protected
         self.durability = durability
+        
+        self.category = "general"
         
         self.requires_container = False
     
@@ -26,30 +28,21 @@ class BlackboardItem:
         self.action = action
     
     def get_blackboard_value(self):
-        blackboard = ai.blackboard.Blackboard()
+        blackboard = ai.blackboard.blackboard
         
         return blackboard.get(key=self.key, entity=self.entity, action=self.action)
 
 @runtime_checkable
 class Edible(Protocol):
-    food_value = 0
-    
-    def get_food_value(self): ...
-    def set_food_value(self, food_value): ...
+    nutrition = 0
 
 @runtime_checkable
 class Potable(Protocol):
     drink_value = 0
-    
-    def get_drink_value(self): ...
-    def set_drink_value(self, drink_value): ...
 
 @runtime_checkable
 class Tool(Protocol):
     durability: int
-    
-    def get_durability(self): ...
-    def set_durability(self, durability): ...
 
 class Liquid:
     def __init__(self, name: str, description: str, amount: int):
@@ -126,22 +119,38 @@ class ItemStack:
             return True
         return False
 
-class Wood(Item):
+class Food(Item, Edible):
+    def __init__(self, name="Food", description="Generic food item.", value=-1, weight=-1, durability=-1):
+        super().__init__(name=name, description=description, value=value, weight=weight, durability=durability)
+        
+        self.category = "food"
+        self.edible = True
+        self.nutrition = None
+
+class Water(Item, Potable):
+    def __init__(self, name="Water", description="A bottle of water.", value=1, weight=1, durability=25):
+        super().__init__(name=name, description=description, value=value, weight=weight, durability=durability)
+        
+        self.category = "drink"
+        self.potable = True
+        self.drink_value = 10
+
+class Resource(Item):
+    def __init__(self, name="Resource", description="A generic resource.", value=1, weight=1, durability=25):
+        super().__init__(name=name, description=description, value=value, weight=weight, durability=durability)
+        
+        self.category = "resource"
+
+class Wood(Resource):
     def __init__(self, name="Wood", description="A piece of wood, useful for crafting and building.", value=1, weight=5, durability=25):
         super().__init__(name=name, description=description, value=value, weight=weight, durability=durability)
 
-class Stone(Item):
+class Stone(Resource):
     def __init__(self, name="Stone", description="A piece of stone, useful for crafting and building.", value=1, weight=5, durability=25):
         super().__init__(name=name, description=description, value=value, weight=weight, durability=durability)
 
-class Apple(Item, Edible):
+class Apple(Food):
     def __init__(self):
-        super().__init__(name="Apple", description="A juicy red apple.", value=5, weight=0.5, durability=10)
-        self.edible = True
-        self.food_value = 5
-    
-    def get_food_value(self):
-        return self.food_value
-    
-    def set_food_value(self, food_value):
-        self.food_value = food_value
+        super().__init__(name="Apple", description="A juicy red apple.", value=5, weight=1, durability=10)
+        
+        self.nutrition = 10

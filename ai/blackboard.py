@@ -1,22 +1,14 @@
+from numpy import blackman
 from utils.logger import Logger
 
 # This file contains the Blackboard class, which is a simple key-value store for sharing data between different parts of the AI system.
 class Blackboard:
     _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super(Blackboard, cls).__new__(cls)
-            
-            cls._instance.__init__(**kwargs)
-        return cls._instance
     
     def __init__(self):
-        if not hasattr(self, 'initialized'):
-            self.initialized = True
-            self._data = {}
-            
-            self.logger = Logger("blackboard")
+        self._data = {}
+        
+        self.logger = Logger("blackboard")
 
     def get(self, key, entity=None, action=None):
         source = None
@@ -30,8 +22,8 @@ class Blackboard:
                 source = self._data
         
         if action is not None:
-            if action.type in source:
-                action_source = source[action.type]
+            if action.name in source:
+                action_source = source[action.name]
                 if key in action_source:
                     source = action_source
         
@@ -57,16 +49,37 @@ class Blackboard:
         
         target[key] = value
     
+    def generate_data_key(self, resource):
+        return ':'.join(["resource_location", resource.category, resource.name])
+    
     def add_resource_location(self, resource, location):
-        if "resource_location:" + resource.name not in self._data:
-            self._data["resource_location:" + resource.name] = []
+        self.logger.debug("Adding resource '%s' at %s" % (resource.name, location))
+        data_key = self.generate_data_key(resource)
         
-        if location not in self._data["resource_location:" + resource.name]:
+        if data_key not in self._data:
+            self._data[data_key] = []
+        
+        if location not in self._data[data_key]:
             self.logger.debug("Found resource '%s' at %s" % (resource.name, location))
-            self._data["resource_location:" + resource.name].append(location)
+            self._data[data_key].append(location)
     
     def remove_resource_location(self, resource, location):
-        self._data["resource_location:" + resource.name].remove(location)
+        data_key = self.generate_data_key(resource)
+        self._data[data_key].remove(location)
     
     def get_resource_location(self, resource):
-        return self._data["resource_location:" + resource.name]
+        data_key = self.generate_data_key(resource)
+        
+        if data_key not in self._data:
+            # If the specific resource can't be found, look for others of the same category
+            data_key = ':'.join(["resource_location", resource.category])
+            
+            results = []
+            
+            for key in self._data:
+                if key.startswith(data_key):
+                    results += self._data[key]
+        
+        return self._data[data_key]
+
+blackboard = Blackboard()

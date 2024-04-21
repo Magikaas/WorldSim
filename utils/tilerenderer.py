@@ -1,20 +1,21 @@
+from attr import dataclass
+from obj.worldobj.resourcenode import NoResource
 from world.tile import Tile
 
 from utils.rendertype import MapRenderType
 
 class TileRenderer():
-    def __init__(self, tile: Tile):
-        self.tile = tile
+    tile: Tile
     
     def render(self, map_render_type=MapRenderType.ALL):
-        tile = self.get_tile()
+        tile = self.tile
         
         if tile.has_colour_override():
-            return tile.get_colour_override()
+            return tile.colour_override
         
-        num_pops = len(tile.get_pops())
-        num_animals = len(tile.get_animals())
-        has_resourcenode = tile.get_resourcenode() is not None
+        num_pops = len(tile.pops)
+        num_animals = len(tile.animals)
+        has_resourcenode = hasattr(tile, 'resourcenode') and type(tile.resourcenode) is not type(NoResource())
         
         coordinate_colour = None
         
@@ -40,7 +41,7 @@ class TileRenderer():
                     coordinate_colour = (0, 0, 0)
                     break
         
-        tile.mark_rendered()
+        tile.dirty = False
         
         return coordinate_colour
     
@@ -48,20 +49,12 @@ class TileRenderer():
         return render_options & option
 
     def count_pops(self):
-        return len(self.get_tile().get_pops())
+        return len(self.tile.pops)
 
     def count_animals(self):
-        return len(self.get_tile().get_animals())
-
-    def count_resourcenodes(self):
-        return len(self.get_tile().get_resourcenode())
+        return len(self.tile.animals)
     
     def get_terrain_colour(self) -> tuple:
         # Combine the terrain and biome colours
-        return self.get_tile().get_terrain().get_colour()
+        return self.tile.terrain.colour
     
-    def get_tile(self) -> Tile:
-        return self.tile
-    
-    def set_tile(self, tile):
-        self.tile = tile

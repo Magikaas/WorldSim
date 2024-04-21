@@ -1,18 +1,26 @@
 import os
+from typing import List
 
 # worldgen/generator.py
 from pynoise.noisemodule import Perlin
 from pynoise.noiseutil import noise_map_plane
 
+import random
+
 import numpy as np
 
+from world.terrain.terrain import Terrain
+
 class MapGenerator:
-    def __init__(self, seed=None):
+    seed: int = 0
+    def __init__(self, seed:int|None = None):
+        if seed is None:
+            seed = random.randrange(10**9)
         self.seed = seed
 
-    def generate_map(self, size, octaves=4, persistence=0.3, lacunarity=3, force_new=False, name="Default"):
+    def generate_map(self, size, octaves=4, persistence=0.3, lacunarity: int=3, force_new=False, name="Default") -> List[float]:
         map_data = []
-        # return map
+        # return map_data
         
         mapfilepath = "map/" + str(self.seed) + "/" + str(octaves) + "/" + name + "_" + str(size[0]) + "x" + str(size[1]) + ".map"
         if force_new == False:
@@ -41,11 +49,11 @@ class MapGenerator:
 
         return compressed_map_data
     
-    def generate_heightmap(self, size, octaves=10, persistence=0.3, lacunarity=3.0, scale=0.03):
-        return self.generate_map(size, octaves, persistence, lacunarity, scale)
+    def generate_heightmap(self, size, octaves=10, persistence=0.3, lacunarity=3):
+        return self.generate_map(size, octaves, persistence, lacunarity)
     
-    def generate_temperaturemap(self, size, octaves=5, persistence=0.3, lacunarity=3.0, scale=0.03):
-        return self.generate_map(size, octaves, persistence, lacunarity, scale)
+    def generate_temperaturemap(self, size, octaves=5, persistence=0.3, lacunarity=3):
+        return self.generate_map(size, octaves, persistence, lacunarity)
     
-    def generate_biomemap(self, size, octaves=10, persistence=0.3, lacunarity=3.0, scale=0.1):
-        return self.generate_map(size, octaves, persistence, lacunarity, scale)
+    def generate_biomemap(self, size, octaves=10, persistence=0.3, lacunarity=3):
+        return self.generate_map(size, octaves, persistence, lacunarity)
