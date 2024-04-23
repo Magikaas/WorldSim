@@ -1,16 +1,17 @@
 from __future__ import annotations
-from re import I
 from typing import TYPE_CHECKING
 from enum import Enum
 
 import random
+
+from attr import dataclass
 
 from managers.pop_move_manager import pop_move_manager as PopMoveManagerInstance
 from managers.pop_goal_manager import PopGoalManager
 
 from .entity import Entity, EntityState
 
-from ai.goal import FoodGoal, BuildGoal
+from ai.goal import FoodGoal, BuildGoal, Goal
 
 from obj.item import Item, ItemStack, Food
 from obj.worldobj.building import Hut
@@ -39,8 +40,6 @@ class Pop(Entity):
         
         self.inventory = Inventory()
         
-        self.goal = PopGoal.NONE
-        
         self.path = None
         
         self.pop_goal_manager = PopGoalManager(self)
@@ -49,26 +48,15 @@ class Pop(Entity):
     
     def initialise_default_goals(self):
         self.add_goal(FoodGoal(self))
-        self.add_goal(BuildGoal(entity=self, building=Hut(), target_location=(random.randint(0, self.world.width-1), random.randint(0, self.world.height-1))))
     
     def move_to_world(self, world):
         self.world = world
     
-    def wander(self, wander_distance: int):
-        self.set_state(EntityState.WANDERING)
-        self.wander_distance = wander_distance
-    
     def add_goal(self, goal: PopGoal):
         self.pop_goal_manager.add_goal(goal)
     
-    def has_path(self):
-        return self.path is not None
-    
-    def has_pending_move(self):
-        return PopMoveManagerInstance.get_move_for_pop(self) is not None
-    
-    def is_idle(self):
-        return self.state == EntityState.IDLE
+    def get_current_goal(self) -> Goal:
+        return self.pop_goal_manager.get_current_goal()
     
     def add_item(self, itemstack: ItemStack):
         self.inventory.add_item(itemstack)
@@ -86,8 +74,12 @@ class Pop(Entity):
         self.pop_goal_manager.perform_goals()
         
         if not self.pop_goal_manager.get_current_goal():
-            random_location = (random.randint(0, self.world.width - 1), random.randint(0, self.world.height - 1))
-            self.pop_goal_manager.add_goal(BuildGoal(entity=self, building=Hut(), target_location=random_location))
+            if not self.world.is_land_tile(self.location):
+                build_location = self.world.get_closest_land_tile_location(self.location)
+            else:
+                build_location = (random.randint(self.location[0] - 10, self.location[0] + 10), random.randint(self.location[1] - 10, self.location[1] + 10))
+            # random_location = (random.randint(0, self.world.width - 1), random.randint(0, self.world.height - 1))
+            self.pop_goal_manager.add_goal(BuildGoal(entity=self, building=Hut(), target_location=build_location))
         
         # Count down food and water
         if self.food > 0:
@@ -125,6 +117,7 @@ class Pop(Entity):
         
         return True
 
+@dataclass
 class Inventory:
     items: dict[Item, ItemStack] = {}
     

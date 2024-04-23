@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
+from ai.goal import Goal
 from utils.logger import Logger
 
 if TYPE_CHECKING:
@@ -40,7 +41,7 @@ class PopGoalManager:
                         current_goal.reset()
                 break
     
-    def get_current_goal(self):
+    def get_current_goal(self) -> Goal:
         if len(self.goals) > 0:
             for goal in self.goals:
                 if not goal.is_fulfilled():

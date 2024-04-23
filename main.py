@@ -7,6 +7,7 @@ import io
 import time
 
 # examples/generate_world.py
+from managers.logger_manager import LoggerManager
 from world.world import world, World
 from managers.pop_manager import pop_manager as PopManager
 from managers.pop_move_manager import pop_move_manager as PopMoveManagerInstance
@@ -24,7 +25,12 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
     
     sim_seed = world.seed
     
-    scale = 10
+    scale = 2
+    
+    show_location = False
+    show_status = False
+    show_goals = False
+    show_items = False
     
     pygame.init()
     
@@ -86,50 +92,57 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
             
             # Show state of each pop on screen
             for pop in PopManager.get_pops():
-                pop_location = pop.location
-                pop_location = (pop_location[0] * scale, pop_location[1] * scale)
-                
-                text = font.render(pop.state, True, (255, 255, 255))
-                
-                window.blit(text, pop_location)
-                
-                # Show the pop's current goal
-                # goal = pop.get_goal()
-                
-                # goal_location = (pop_location[0], pop_location[1] + 20)
-                
-                # goal_string = goal.type if goal is not None else "None"
-                
-                # goal_text = font.render(goal_string, True, (255, 255, 255))
-                
-                # window.blit(goal_text, goal_location)
-                
-                pop_status_text = font.render(f"Health: {pop.health}, Food: {pop.food}, Water: {pop.water}", True, (255, 255, 255))
-                
-                pop_status_text_location = (pop_location[0], pop_location[1] + 20)
-                
-                window.blit(pop_status_text, pop_status_text_location)
-                
-                # Show the pop's inventory
-                inventory = pop.inventory
-                
-                x = 40
-                
-                items = inventory.items
-                
-                for item_name in items:
-                    inventory_location = (pop_location[0], pop_location[1] + x)
+                if show_location:
+                    pop_location = pop.location
+                    pop_location = (pop_location[0] * scale, pop_location[1] * scale)
                     
-                    inventory_text = font.render(str(items[item_name]), True, (255, 255, 255))
+                    text = font.render(pop.state, True, (255, 255, 255))
                     
-                    window.blit(inventory_text, inventory_location)
-                    
-                    x += 20
+                    window.blit(text, pop_location)
                 
+                if show_goals:
+                    # Show the pop's current goal
+                    goal = pop.get_current_goal()
+                    
+                    goal_location = (pop_location[0], pop_location[1] + 20)
+                    
+                    goal_string = str(goal.type) if goal is not None else "None"
+                    
+                    goal_text = font.render(goal_string, True, (255, 255, 255))
+                    
+                    window.blit(goal_text, goal_location)
+                
+                if show_status:
+                    # Show the pop's status
+                    pop_status_text = font.render(f"Health: {pop.health}, Food: {pop.food}, Water: {pop.water}", True, (255, 255, 255))
+                    
+                    pop_status_text_location = (pop_location[0], pop_location[1] + 20)
+                    
+                    window.blit(pop_status_text, pop_status_text_location)
+                
+                if show_items:
+                    # Show the pop's inventory
+                    inventory = pop.inventory
+                    
+                    x = 40
+                    
+                    items = inventory.items
+                    
+                    for item_name in items:
+                        inventory_location = (pop_location[0], pop_location[1] + x)
+                        
+                        inventory_text = font.render(str(items[item_name]), True, (255, 255, 255))
+                        
+                        window.blit(inventory_text, inventory_location)
+                        
+                        x += 20
+                
+                # Render the new frame completely
                 pygame.display.flip()
         
         if iteration % render_frequency == 0:
-            logger.info(f"Iteration {iteration}")
+            logger.info(f"Iteration {iteration}. Time millis: {pygame.time.get_ticks()}. Pops: {len(PopManager.get_pops())}")
+            print(f"Iteration {iteration}. Time millis: {pygame.time.get_ticks()}. Pops: {len(PopManager.get_pops())}")
         
         # Update the world state, which includes updating all pops within it
         if not paused:
@@ -153,9 +166,10 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    world_width = 128
-    world_height = 128
-    initial_pop_count = 1
+    size = 128
+    world_width = size
+    world_height = size
+    initial_pop_count = 25
     seed = 1010
     chunk_size = 16
     
@@ -185,9 +199,12 @@ def prep_simulation():
 def main():
     world = prep_simulation()
     
+    max_iterations = 10000
+    render_frequency = 250
+    
     do_render = True # Set to True to render each step of the simulation to an image file
 
-    run_simulation(world, max_iterations=5000, render=do_render, render_frequency=500)
+    run_simulation(world, max_iterations=max_iterations, render=do_render, render_frequency=render_frequency)
 
     logger.info("Simulation complete")
 
@@ -203,6 +220,9 @@ if __name__ == "__main__":
         s = io.StringIO()
         
         timestamp = str(int(time.time()))
+        
+        for logger in LoggerManager.loggers.values():
+            logger.flush_messages()
         
         # stats.print_stats()
         with open("profile/" + timestamp + ".txt", "w") as f:

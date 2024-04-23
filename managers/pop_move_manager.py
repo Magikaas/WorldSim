@@ -40,7 +40,7 @@ class PopMoveManager:
             move.progress_move()
             
             if move.is_done():
-                self.logger.debug("Pop %s has arrived at %s" % (move.pop.name, move.destination_tile.location))
+                # self.logger.debug("Pop %s has arrived at %s" % (move.pop.name, move.destination_tile.location))
                 self.move_pop_to_tile(pop=move.pop, destination=move.destination_tile)
                 self.popmoves[popid] = self.popmoves[popid][1:]
     

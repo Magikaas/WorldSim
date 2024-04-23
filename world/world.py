@@ -9,7 +9,7 @@ from pathfinding.finder.a_star import AStarFinder, DiagonalMovement
 
 from object_types import Location
 from world.terrain import Terrain, TerrainHeight
-from world.biome import Biome, Temperature, BiomeType
+from world.biome import Temperature, BiomeType
 from world.terrain import *
 
 from world.chunkmanager import ChunkManager
@@ -19,7 +19,7 @@ from managers.pop_manager import pop_manager as PopManager
 
 from obj.item import Item
 
-from obj.worldobj.resourcenode import NoResource, ResourceNode, Oak, StoneResource
+from obj.worldobj.resourcenode import NoResource, ResourceNode
 
 from .generator import MapGenerator
 from .tile import Tile
@@ -52,7 +52,6 @@ class World(RenderableObserver):
         if hasattr(self, "terrain"): raise ValueError("Somehow got initialized twice")
         self.chunk_manager = ChunkManager(world=self)
         self.pathfinder = AStarFinder(diagonal_movement=DiagonalMovement.never)
-        self.grid = None
         self.pathfinder_prepped = False
         self.render_mode = None
         
@@ -260,6 +259,23 @@ class World(RenderableObserver):
         tile_manager = chunk.tile_manager
         return tile_manager.get_tile(tuple([coord % chunk.size for coord in location]))
     
+    def is_land_tile(self, location: Location) -> bool:
+        tile = self.get_tile(location)
+        
+        return tile.terrain != Ocean() and tile.terrain != ShallowCoastalWater()
+    
+    def get_closest_land_tile_location(self, location: Location) -> Location:
+        distance = 1
+        x, y = location
+        
+        while True:
+            for i in range(-distance, distance + 1):
+                for j in range(-distance, distance + 1):
+                    target = (x + i, y + j)
+                    if self.is_land_tile(target):
+                        return target
+            distance += 1
+    
     def get_distance_between(self, location1, location2):
         width = self.width
         height = self.height
@@ -421,28 +437,31 @@ class World(RenderableObserver):
         
         return resourcenode_tiles
     
-    def pathfind(self, pop, target_location: Location):
+    def pathfind(self, pop, target_location: Location, grid=None):
         if self.paths.get(pop.location) is not None:
             if self.paths[pop.location].get(target_location) is not None:
                 return self.paths[pop.location][target_location]
         
-        self.prep_pathfinder()
+        if grid is None:
+            # grid = self.old_prep_pathfinder()
+            # offsets = (0, 0)
+            grid, offsets = self.prep_pathfinder(pop.location, target_location)
         
         nodepath = None
         
         while nodepath is None:
             try:
-                nodepath, runs = self.pathfinder.find_path(start=self.grid.node(pop.location[0], pop.location[1]), end=self.grid.node(target_location[0], target_location[1]), graph=self.grid)
+                nodepath, runs = self.pathfinder.find_path(start=grid.node(pop.location[0] - offsets[0], pop.location[1] - offsets[1]), end=grid.node(target_location[0] - offsets[0], target_location[1] - offsets[1]), graph=grid)
             except Exception as e:
                 self.logger.debug("Error finding path:", e, actor=pop)
         
         path = Path(pop)
         
-        # self.logger.debug("Created path from", pop.location, "to tile:", target_location, "with length:", len(nodepath), actor=pop)
+        self.logger.debug("Created path from", pop.location, "to tile:", target_location, "with length:", len(nodepath), actor=pop)
         
         for node in nodepath:
-            x = node.x
-            y = node.y
+            x = node.x + offsets[0]
+            y = node.y + offsets[1]
             
             move = PopMove(pop, self.get_tile((x, y)))
             path.add_move(move)
@@ -454,35 +473,58 @@ class World(RenderableObserver):
         
         return path
     
-    def prep_pathfinder(self):
-        chunks = self.chunk_manager.chunks
+    def prep_pathfinder(self, start_location: Location, target_location: Location):
+        # Padding to make sure the pathfinder can find a path to the target
+        padding = 4
         
-        pathing_grid = self.get_chunk_based_pathing_grid()
+        # The grid is created based off the start and target location compared to the actual 0,0 location, determine the offset between the two
+        # The offset is based on the location closest to the 0,0 location
+        offset_x = min(start_location[0], target_location[0]) - padding
+        offset_y = min(start_location[1], target_location[1]) - padding
+        
+        offsets = (offset_x, offset_y)
+        
+        # Determine the width and height of the grid
+        grid_width = padding*2 + abs(start_location[0] - target_location[0])
+        grid_height = padding*2 + abs(start_location[1] - target_location[1])
         
         # Make 2 dimensional array with all the tiles in the world
-        gridnodes = [[0 for j in range(self.width)] for i in range(self.height)]
+        gridnodes = [[1 for j in range(grid_width)] for i in range(grid_height)]
         
-        x = y = 0
-        for chunk_row in chunks:
-            for chunk in chunk_row:
-                
-                tiles = chunk.tile_manager.tiles
-                
-                for tiles_row in tiles:
-                    for tile in tiles_row:
-                        gridnodes[tile.location[1]][tile.location[0]] = 0 if pathing_grid[y][x] == 0 else (1 / tile.terrain.speed_multiplier if tile.terrain.speed_multiplier > 0 else 0)
-                
-                y += 1
-            
-            x += 1
-            y = 0
+        # Cache tiles for each chunk that is within the area of the pathfinder grid
+        chunk_tiles = {}
         
-        self.grid = Grid(width=self.width, height=self.height, matrix=gridnodes, grid_id=0)
+        # Make the tiles around the target location passable and adjust the value based on the tile's speed multiplier
+        for x in range(grid_width):
+            for y in range(grid_height):
+                if self.get_distance_between((x, y), target_location) <= padding:
+                    gridnodes[y][x] = 0
+                
+                # Determine the true x and y coordinates of the tile
+                true_x = (start_location[0] + x) % self.width
+                true_y = (start_location[1] + y) % self.height
+                
+                if chunk_tiles.get((true_x // self.chunk_size, true_y // self.chunk_size)) is None:
+                    chunk = self.chunk_manager.get_chunk_at((true_x, true_y))
+                    chunk_tiles[(true_x // self.chunk_size, true_y // self.chunk_size)] = chunk.tile_manager.tiles
+                
+                # Determine the true x and y coordinates of the chunk within the chunk grid
+                chunk_true_x = true_x // self.chunk_size
+                chunk_true_y = true_y // self.chunk_size
+                
+                # Determine the true x and y coordinates of the tile within the chunk
+                chunk_x = true_x % self.chunk_size
+                chunk_y = true_y % self.chunk_size
+                
+                tile = chunk_tiles[(chunk_true_x, chunk_true_y)][chunk_x][chunk_y]
+                
+                gridnodes[y][x] = (1 / tile.terrain.speed_multiplier if tile.terrain.speed_multiplier > 0 else 0)
         
-        # self.grid.set_passable_left_right_border()
-        # self.grid.set_passable_up_down_border()
+        grid = Grid(width=self.width, height=self.height, matrix=gridnodes, grid_id=0)
         
         self.pathfinder_prepped = True
+        
+        return grid, offsets
     
     def get_chunk_based_pathing_grid(self):
         chunks = self.chunk_manager.chunks

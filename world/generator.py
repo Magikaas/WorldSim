@@ -18,7 +18,7 @@ class MapGenerator:
             seed = random.randrange(10**9)
         self.seed = seed
 
-    def generate_map(self, size, octaves=4, persistence=0.3, lacunarity: int=3, force_new=False, name="Default") -> List[float]:
+    def generate_map(self, size, octaves=4, persistence=0.3, lacunarity: int=2, force_new=False, name="Default") -> List[float]:
         map_data = []
         # return map_data
         

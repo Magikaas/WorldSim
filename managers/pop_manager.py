@@ -62,7 +62,7 @@ class PopManager():
         return pops
     
     def give_item_to_pop(self, pop: obj.worldobj.pop.Pop, item):
-        self.logger.debug("Giving %sx %s to pop" % (item.amount, item.item.name), actor=pop)
+        self.logger.debug("Giving %sx %s to %s" % (item.amount, item.item.name, pop.name), actor=pop)
         pop.add_item(item)
         self.update_pop(pop)
     

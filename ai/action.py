@@ -275,7 +275,7 @@ class LocateResourceAction(Action):
     def start(self):
         world = self.entity.world
         
-        resource_tiles = world.find_tiles_with_resource_near(location=self.entity.location, resource_type=self.resource, distance=25)
+        resource_tiles = world.find_tiles_with_resource_near(location=self.entity.location, resource_type=self.resource, distance=15)
         
         self.shortest_path_length = 1000
         
@@ -300,7 +300,7 @@ class LocateResourceAction(Action):
             # Add the tile to the blackboard for later actions
             Blackboard.add_resource_location(resource=self.resource, location=closest_tile.location)
         else:
-            while closest_tile is None and search_distance < 95:
+            while closest_tile is None and search_distance < 45:
                 search_distance += 5
                 resource_tiles = world.find_tiles_with_resource_near(location=self.entity.location, resource_type=self.resource, distance=search_distance)
                 
