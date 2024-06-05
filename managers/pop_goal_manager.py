@@ -4,6 +4,8 @@ from typing import List, TYPE_CHECKING
 from ai.goal import Goal
 from utils.logger import Logger
 
+from managers.logger_manager import logger_manager
+
 if TYPE_CHECKING:
     import ai
     import ai.goal
@@ -15,7 +17,7 @@ class PopGoalManager:
         self.active_action = None
         self.pop = pop
         
-        self.logger = Logger(pop.name + "_goal_manager")
+        self.logger = Logger(pop.name + "_goal_manager", logger_manager)
     
     def add_goal(self, goal):
         self.goals.append(goal)

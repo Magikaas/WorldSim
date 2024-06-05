@@ -1,6 +1,7 @@
 from enum import Enum
 from abc import ABC, abstractmethod
 
+from managers.logger_manager import logger_manager
 from obj.item import Item, ItemStack
 from obj.worldobj.entity import Entity, EntityState
 from obj.worldobj.building import Building
@@ -27,7 +28,7 @@ class Action(ABC):
         self.name = name
         self.parent_action = parent_action
         
-        self.logger = Logger("action - %s" % name)
+        self.logger = Logger("action - %s" % name, logger_manager)
         
         self.pop_state = None
         
@@ -281,6 +282,7 @@ class LocateResourceAction(Action):
         
         for tile in resource_tiles:
             path = world.pathfind(pop=self.entity, target_location=tile.location)
+            # path = world.pathfind(start_location=self.entity.location, target_location=tile.location)
             
             Blackboard.add_resource_location(resource=self.resource, location=tile.location)
             
@@ -364,7 +366,7 @@ class GatherAction(CompositeAction):
         
         super().__init__(name="gather", entity=entity, parent_action=parent_action)
         
-        self.logger = Logger("action - %s" % (self.name))
+        self.logger = Logger("action - %s" % (self.name), logger_manager)
     
     def determine_conditions(self):
         self.add_prep_condition(HasItemsCondition(entity_id=self.entity.id, item=self.resource).invert())

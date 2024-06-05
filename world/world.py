@@ -34,6 +34,8 @@ from path.popmove import PopMove
 
 from utils.logger import Logger
 
+from managers.logger_manager import logger_manager
+
 from observer import RenderableObserver
 
 # Longterm TODO: Make singleton possible with multiple 'Worlds'
@@ -51,11 +53,11 @@ class World(RenderableObserver):
     def __init__(self):
         if hasattr(self, "terrain"): raise ValueError("Somehow got initialized twice")
         self.chunk_manager = ChunkManager(world=self)
-        self.pathfinder = AStarFinder(diagonal_movement=DiagonalMovement.never)
+        self.pathfinder = AStarFinder(diagonal_movement=DiagonalMovement.always)
         self.pathfinder_prepped = False
         self.render_mode = None
         
-        self.logger = Logger("world")
+        self.logger = Logger("world", logger_manager)
         
         self.paths = {}
     
@@ -80,19 +82,25 @@ class World(RenderableObserver):
 
     def prepare(self):
         # Placeholder for any setup that needs to be done before the simulation starts
+        self.logger.debug("Preparing world")
+        self.logger.debug("Generating terrain map")
         self.generate_terrain()
+        self.logger.debug("Generating temperature map")
         self.generate_temperature()
         
+        self.logger.debug("Initializing chunk manager")
         self.chunk_manager.initialize_chunks()
         
+        self.logger.debug("Generating map")
         self.generate_map()
+        self.logger.debug("Generating resource nodes")
         self.generate_resourcenodes()
     
     def generate_terrain(self):
-        self.terrain = MapGenerator(seed=self.seed).generate_map((self.height, self.width), octaves=5, name="terrain")
+        self.terrain = MapGenerator(seed=self.seed).generate_map((self.height, self.width), chunk_size=self.chunk_size, octaves=5, name="terrain")
 
     def generate_temperature(self):
-        self.biomes = MapGenerator(seed=self.seed + 1).generate_map((self.height, self.width))
+        self.biomes = MapGenerator(seed=self.seed + 1).generate_map((self.height, self.width), chunk_size=self.chunk_size)
     
     def get_terrain_obj_at(self, x, y) -> Terrain:
         terrain_value = self.terrain[y * self.width + x]
@@ -146,7 +154,7 @@ class World(RenderableObserver):
     def generate_resourcenodes(self):
         chunks = self.chunk_manager.chunks
         
-        resource_density_map = MapGenerator(seed=self.seed + 2).generate_map((len(chunks), len(chunks[0])), octaves=5, name="resource_density")
+        resource_density_map = MapGenerator(seed=self.seed + 2).generate_map((len(chunks), len(chunks[0])), chunk_size=1, octaves=5, name="resource_density")
         # resource_type_map = MapGenerator(seed=self.seed + 3).generate_map((len(chunks), len(chunks[0])), octaves=4, name="resource_type")
         
         max_resource_per_chunk = 5 # TODO: Make this variable
@@ -234,6 +242,7 @@ class World(RenderableObserver):
     def generate_map(self):
         chunk_manager = self.chunk_manager
         
+        self.logger.debug("Generating map chunks")
         for x in range(self.width):
             for y in range(self.height):
                 chunk = None
@@ -241,6 +250,7 @@ class World(RenderableObserver):
                     chunk = Chunk(location=(x, y), size=self.chunk_size).initialise()
                     chunk.register_observer(self)
                     chunk_manager.add_chunk(chunk)
+                    
                 else:
                     chunk = chunk_manager.get_chunk_at((x, y))
                 tile_manager = chunk.tile_manager
@@ -252,6 +262,10 @@ class World(RenderableObserver):
                 )
                 new_tile.register_observer(chunk)
                 tile_manager.add_tile(new_tile)
+        
+        # I'll turn this off for now, as it's not necessary for the current implementation, it also takes a lot of time
+        # self.logger.debug("Preparing pathing tiles")
+        # self.chunk_manager.prepare_best_pathing_tiles()
     
     def get_tile(self, location) -> Tile:
         chunk_manager = self.chunk_manager
@@ -316,6 +330,10 @@ class World(RenderableObserver):
         
         for chunk_list in chunks:
             for chunk in chunk_list:
+                if chunk is None:
+                    # This chunk has not been generated yet
+                    continue
+                
                 if force_render:
                     tiles = chunk.tile_manager.tiles
                 else:
@@ -437,6 +455,44 @@ class World(RenderableObserver):
         
         return resourcenode_tiles
     
+    def pathfind_pop(self, pop, target_location: Location):
+        # Generate the chunk grid if it's not already generated
+        chunkgrid = self.get_chunk_based_pathing_grid()
+        
+        # Create a grid object for the pathfinder
+        chunkgrid_nodes = Grid(width=len(chunkgrid[0]), height=len(chunkgrid), matrix=chunkgrid, grid_id=1)
+        
+        # Find a path between the pop's location and the target location
+        chunk_nodepath = self.pathfind(pop, target_location, grid=chunkgrid_nodes)
+        
+        path = Path(pop)
+    
+    def pathfind_new(self, start_location: Location, target_location: Location, grid=None):
+        if grid is None:
+            grid, offsets = self.prep_pathfinder(start_location, target_location)
+        else:
+            offsets = (0, 0)
+        
+        nodepath = None
+        
+        while nodepath is None:
+            try:
+                nodepath, runs = self.pathfinder.find_path(start=grid.node(start_location[0] - offsets[0], start_location[1] - offsets[1]), end=grid.node(target_location[0] - offsets[0], target_location[1] - offsets[1]), graph=grid)
+            except Exception as e:
+                self.logger.debug("Error finding path:", e)
+        
+        # path = Path(None)
+        
+        # for node in nodepath:
+        #     x = node.x + offsets[0]
+        #     y = node.y + offsets[1]
+            
+        #     pop_move = PopMove(None, self.get_tile((x, y)))
+            
+        #     path.add_move((x, y))
+        
+        return nodepath
+    
     def pathfind(self, pop, target_location: Location, grid=None):
         if self.paths.get(pop.location) is not None:
             if self.paths[pop.location].get(target_location) is not None:
@@ -451,13 +507,15 @@ class World(RenderableObserver):
         
         while nodepath is None:
             try:
-                nodepath, runs = self.pathfinder.find_path(start=grid.node(pop.location[0] - offsets[0], pop.location[1] - offsets[1]), end=grid.node(target_location[0] - offsets[0], target_location[1] - offsets[1]), graph=grid)
+                start_node = ((pop.location[0] - offsets[0]) % self.width, (pop.location[1] - offsets[1]) % self.width)
+                end_node = ((target_location[0] - offsets[0]) % self.height, (target_location[1] - offsets[1]) % self.height)
+                nodepath, runs = self.pathfinder.find_path(start=grid.node((pop.location[0] - offsets[0]) % self.width, (pop.location[1] - offsets[1]) % self.width), end=grid.node((target_location[0] - offsets[0]) % self.height, (target_location[1] - offsets[1]) % self.height), graph=grid)
             except Exception as e:
                 self.logger.debug("Error finding path:", e, actor=pop)
         
-        path = Path(pop)
-        
         self.logger.debug("Created path from", pop.location, "to tile:", target_location, "with length:", len(nodepath), actor=pop)
+        
+        path = Path(pop)
         
         for node in nodepath:
             x = node.x + offsets[0]
@@ -479,14 +537,28 @@ class World(RenderableObserver):
         
         # The grid is created based off the start and target location compared to the actual 0,0 location, determine the offset between the two
         # The offset is based on the location closest to the 0,0 location
-        offset_x = min(start_location[0], target_location[0]) - padding
-        offset_y = min(start_location[1], target_location[1]) - padding
         
-        offsets = (offset_x, offset_y)
+        # If the difference is larger than self.width / 2 or self.height / 2, the offset is the location farthest from the 0,0 location (- padding)
+        # because we are wrapping around the world
+        if abs(start_location[0] - target_location[0]) > self.width / 2:
+            # Wrapping around, so pick the location farthest from the 0,0 location
+            offset_x = max(start_location[0], target_location[0]) - padding
+            grid_width = padding*2 + self.width - abs(start_location[0] - target_location[0])
+        else:
+            # No wrapping, pick the closest location to the 0,0 location
+            offset_x = min(start_location[0], target_location[0]) - padding
+            grid_width = padding*2 + abs(start_location[0] - target_location[0])
         
-        # Determine the width and height of the grid
-        grid_width = padding*2 + abs(start_location[0] - target_location[0])
-        grid_height = padding*2 + abs(start_location[1] - target_location[1])
+        if abs(start_location[1] - target_location[1]) > self.height / 2:
+            # Wrapping around, so pick the location farthest from the 0,0 location
+            offset_y = max(start_location[1], target_location[1]) - padding
+            grid_height = padding*2 + self.height - abs(start_location[1] - target_location[1])
+        else:
+            # No wrapping, pick the closest location to the 0,0 location
+            offset_y = min(start_location[1], target_location[1]) - padding
+            grid_height = padding*2 + abs(start_location[1] - target_location[1])
+        
+        offsets = (offset_x % self.width, offset_y % self.height)
         
         # Make 2 dimensional array with all the tiles in the world
         gridnodes = [[1 for j in range(grid_width)] for i in range(grid_height)]
@@ -495,11 +567,8 @@ class World(RenderableObserver):
         chunk_tiles = {}
         
         # Make the tiles around the target location passable and adjust the value based on the tile's speed multiplier
-        for x in range(grid_width):
-            for y in range(grid_height):
-                if self.get_distance_between((x, y), target_location) <= padding:
-                    gridnodes[y][x] = 0
-                
+        for x in range(grid_height):
+            for y in range(grid_width):
                 # Determine the true x and y coordinates of the tile
                 true_x = (start_location[0] + x) % self.width
                 true_y = (start_location[1] + y) % self.height
@@ -518,9 +587,9 @@ class World(RenderableObserver):
                 
                 tile = chunk_tiles[(chunk_true_x, chunk_true_y)][chunk_x][chunk_y]
                 
-                gridnodes[y][x] = (1 / tile.terrain.speed_multiplier if tile.terrain.speed_multiplier > 0 else 0)
+                gridnodes[x][y] = (1 / tile.terrain.speed_multiplier if tile.terrain.speed_multiplier > 0 else 0)
         
-        grid = Grid(width=self.width, height=self.height, matrix=gridnodes, grid_id=0)
+        grid = Grid(width=len(gridnodes), height=len(gridnodes[0]), matrix=gridnodes, grid_id=0)
         
         self.pathfinder_prepped = True
         
@@ -537,7 +606,7 @@ class World(RenderableObserver):
                 average_cost = chunk.get_average_pathing_cost()
                 
                 # If the pathing cost is too high, make the chunk impassable, to ease up on the pathfinding calculations
-                grid_row.append(1)
+                grid_row.append(average_cost)
                 # grid_row.append(1 if average_cost < 4 else 0)
             grid.append(grid_row)
         

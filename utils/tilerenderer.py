@@ -1,4 +1,4 @@
-from attr import dataclass
+from dataclasses import dataclass
 from obj.worldobj.resourcenode import NoResource
 from world.tile import Tile
 

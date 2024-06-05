@@ -4,6 +4,7 @@ from typing import List, TYPE_CHECKING
 from utils.logger import Logger
 
 from .pop_move_manager import PopMoveManager
+from .logger_manager import logger_manager
 
 if TYPE_CHECKING:
     import obj.worldobj.pop
@@ -14,7 +15,7 @@ class PopManager():
     pops: dict[int, obj.worldobj.pop.Pop] = {}
     
     def __init__(self):
-        self.logger = Logger("pop_manager")
+        self.logger = Logger("pop_manager", logger_manager)
     
     def add_pop_move_manager(self, pop_move_manager: PopMoveManager):
         self.pop_move_manager = pop_move_manager

@@ -12,6 +12,8 @@ from observer import Subject
 
 from utils.logger import Logger
 
+from managers.logger_manager import logger_manager
+
 from object_types import Location
 
 if TYPE_CHECKING:
@@ -27,11 +29,12 @@ class Tile(Subject):
     terrain: Terrain
     biome: Biome
     building: Building
+    location: Location
     
     def __init__(self, location: Location, local_coordinates: Location, terrain: Terrain, biome: Biome):
         super().__init__()
         
-        self.logger = Logger("Tile")
+        self.logger = Logger("Tile", logger_manager)
         
         self.location = location
         self.local_coordinates = local_coordinates # Coordinates within its chunk

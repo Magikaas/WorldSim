@@ -3,6 +3,8 @@ from __future__ import annotations
 from path.popmove import PopMove
 from utils.logger import Logger
 
+from managers.logger_manager import logger_manager
+
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
@@ -22,7 +24,7 @@ class PopMoveManager:
         return cls._instance
     
     def __init__(self):
-        self.logger = Logger("pop_move_manager")
+        self.logger = Logger("pop_move_manager", logger_manager)
     
     def handle_moves(self):
         # Move pops along their paths
@@ -62,6 +64,12 @@ class PopMoveManager:
     
     def move_pop_to_tile(self, pop: obj.worldobj.pop.Pop, destination: world.tile.Tile):
         # print("Moving pop %s to %s" % (pop.location, direction))
+        total_distance = abs(pop.location[0] - destination.location[0]) + abs(pop.location[1] - destination.location[1])
+        
+        if (total_distance > 2 and total_distance < 250) or total_distance == 0:
+            self.logger.error("Pop %s is moving more than 1 tile at a time. This is not allowed" % pop.name)
+            return
+        
         past_chunk = self.world.chunk_manager.get_chunk_at(pop.location)
         past_chunk.dirty = True
         past_tile = self.world.get_tile(pop.location)

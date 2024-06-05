@@ -1,6 +1,10 @@
 from __future__ import annotations
+from concurrent.futures import ProcessPoolExecutor
+from dataclasses import field
+import os
+import pickle
 
-from attr import dataclass
+from dataclasses import dataclass
 
 from world.chunk import Chunk
 
@@ -12,8 +16,9 @@ if TYPE_CHECKING:
 @dataclass
 class ChunkManager:
     world: world.World
-    chunks: List[List[Chunk]] = []
+    chunks: List[List[Chunk]] = field(default_factory=list)
     chunk_size: int = 0
+    best_pathing_tiles: dict = field(default_factory=dict)
     
     def initialize_chunks(self):
         self.chunks = [
@@ -62,3 +67,33 @@ class ChunkManager:
         chunk_x = int(location[0] / self.chunk_size) % len(self.chunks)
         chunk_y = int(location[1] / self.chunk_size) % len(self.chunks[chunk_x])
         return self.chunks[chunk_x][chunk_y]
+    
+    def get_file_name(self):
+        return "output/chunks_%sx%s_%s.txt" % (self.world.width, self.world.height, self.world.seed)
+    
+    def prepare_best_pathing_tiles(self):
+        filename = self.get_file_name()
+        
+        if os.path.exists(filename):
+            self.best_pathing_tiles = pickle.load(open(filename, "rb"))
+            return
+        
+        with ProcessPoolExecutor(max_workers=64) as executor:
+            threads = []
+            for chunk_row in self.chunks:
+                for chunk in chunk_row:
+                    threads.append(executor.submit(self.prepare_best_pathing_tile, chunk))
+            
+            for thread in threads:
+                result = thread.result()
+                self.best_pathing_tiles[result.location] = result
+        
+        filename = self.get_file_name()
+        
+        with open(filename, "wb") as f:
+            pickle.dump(self.best_pathing_tiles, f)
+        
+        return self.best_pathing_tiles
+    
+    def prepare_best_pathing_tile(self, chunk: Chunk):
+        return chunk.get_best_pathing_tile()

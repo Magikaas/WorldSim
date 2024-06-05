@@ -4,7 +4,7 @@ from enum import Enum
 
 import random
 
-from attr import dataclass
+from dataclasses import dataclass, field
 
 from managers.pop_move_manager import pop_move_manager as PopMoveManagerInstance
 from managers.pop_goal_manager import PopGoalManager
@@ -17,6 +17,8 @@ from obj.item import Item, ItemStack, Food
 from obj.worldobj.building import Hut
 
 from utils.logger import Logger
+
+from managers.logger_manager import logger_manager
 
 if TYPE_CHECKING:
     import world
@@ -44,7 +46,7 @@ class Pop(Entity):
         
         self.pop_goal_manager = PopGoalManager(self)
         
-        self.logger = Logger(name)
+        self.logger = Logger(name, logger_manager)
     
     def initialise_default_goals(self):
         self.add_goal(FoodGoal(self))
@@ -119,7 +121,7 @@ class Pop(Entity):
 
 @dataclass
 class Inventory:
-    items: dict[Item, ItemStack] = {}
+    items: dict[Item, ItemStack] = field(default_factory=dict)
     
     def add_item(self, added_item: ItemStack):
         for item in self.items:

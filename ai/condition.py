@@ -6,6 +6,7 @@ from typing import List, TYPE_CHECKING
 from obj.item import Item, ItemStack
 
 from managers.pop_manager import pop_manager as PopManager
+from managers.logger_manager import logger_manager
 
 from obj.worldobj.entity import Entity
 from obj.worldobj.building import Building
@@ -31,7 +32,7 @@ class Condition(ABC):
         self.type = type
         self.inverted = False
         
-        self.logger = Logger(type)
+        self.logger = Logger(type, logger_manager)
     
     def is_opposite_check(self):
         return self.inverted

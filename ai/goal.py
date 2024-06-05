@@ -10,6 +10,7 @@ from ai.condition import Condition, BuildingExistsCondition, HasItemsCondition, 
 from ai.action import Action, MoveAction, BuildAction, GatherAction
 
 from managers.pop_manager import pop_manager as PopManager
+from managers.logger_manager import logger_manager
 
 from object_types import Location
 from utils.logger import Logger
@@ -30,7 +31,7 @@ class Goal(ABC):
         
         self.fulfilled = False
         
-        self.logger = Logger(str(type))
+        self.logger = Logger(str(type), logger_manager)
         
         self.entity = PopManager.get_pop(self.entity.id)
         

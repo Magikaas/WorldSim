@@ -1,8 +1,7 @@
-from dataclasses import dataclass
-
+from dataclasses import dataclass, field
 
 @dataclass
 class LoggerManager:
-    loggers = {}
+    loggers: dict = field(default_factory=dict)
 
 logger_manager = LoggerManager()

@@ -2,3 +2,4 @@ pynoise
 numpy
 pillow
 pygame-ce
+pickle

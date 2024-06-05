@@ -7,7 +7,7 @@ import io
 import time
 
 # examples/generate_world.py
-from managers.logger_manager import LoggerManager
+from managers.logger_manager import logger_manager
 from world.world import world, World
 from managers.pop_manager import pop_manager as PopManager
 from managers.pop_move_manager import pop_move_manager as PopMoveManagerInstance
@@ -18,19 +18,19 @@ from utils.logger import Logger
 
 import os
     
-logger = Logger("general")
+logger = Logger("general", logger_manager)
 
-def run_simulation(world: World, max_iterations=1000, render=False, render_frequency=1000):
+def run_simulation(world: World, max_simulation_steps=1000, render=False, render_frequency=1000):
     step_nr = 0
     
     sim_seed = world.seed
     
-    scale = 2
+    scale = 4
     
-    show_location = False
-    show_status = False
+    show_location = True
+    show_status = True
     show_goals = False
-    show_items = False
+    show_items = True
     
     pygame.init()
     
@@ -56,13 +56,40 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
     
     paused = False
     
-    for iteration in range(max_iterations):
+    while True:
+        keys = pygame.key.get_pressed()
+        
+        if keys[pygame.K_SPACE]:
+            paused = not paused
+        
+        if keys[pygame.K_q]:
+            break
+        
+        if keys[pygame.K_l]:
+            show_location = not show_location
+        
+        if keys[pygame.K_s]:
+            show_status = not show_status
+            
+        if keys[pygame.K_g]:
+            show_goals = not show_goals
+            
+        if keys[pygame.K_i]:
+            show_items = not show_items
+            
+        if keys[pygame.K_p]:
+            for pop in PopManager.get_pops():
+                pop.health = 0
+                
+        if keys[pygame.K_o]:
+            for pop in PopManager.get_pops():
+                pop.food = 0
+                pop.water = 0
+        
         # clear()
         if render:
             pygame.event.get()
             # clock.tick(15)
-        
-        step_nr += 1
         
         if render:
             surface = world.render(surface=surface, scale=scale, output=RenderOutput.VARIABLE)
@@ -92,11 +119,10 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
             
             # Show state of each pop on screen
             for pop in PopManager.get_pops():
+                pop_location = pop.location
+                pop_location = (pop_location[0] * scale, pop_location[1] * scale)
                 if show_location:
-                    pop_location = pop.location
-                    pop_location = (pop_location[0] * scale, pop_location[1] * scale)
-                    
-                    text = font.render(pop.state, True, (255, 255, 255))
+                    text = font.render(pop.name, True, (255, 255, 255))
                     
                     window.blit(text, pop_location)
                 
@@ -140,21 +166,26 @@ def run_simulation(world: World, max_iterations=1000, render=False, render_frequ
                 # Render the new frame completely
                 pygame.display.flip()
         
-        if iteration % render_frequency == 0:
-            logger.info(f"Iteration {iteration}. Time millis: {pygame.time.get_ticks()}. Pops: {len(PopManager.get_pops())}")
-            print(f"Iteration {iteration}. Time millis: {pygame.time.get_ticks()}. Pops: {len(PopManager.get_pops())}")
+        if step_nr % render_frequency == 0:
+            logger.info(f"Step {step_nr}. Time millis: {pygame.time.get_ticks()}. Pops: {len(PopManager.get_pops())}")
+            print(f"Step {step_nr}. Time millis: {pygame.time.get_ticks()}. Pops: {len(PopManager.get_pops())}")
         
         # Update the world state, which includes updating all pops within it
         if not paused:
             world.update()
 
         if check_end_conditions(world) and False:
-            logger.info(f"Simulation ended at iteration {iteration}")
+            logger.info(f"End conditions reached at step {step_nr}")
             break
-
-        # Example: You could add new pops or change the world based on specific conditions
-        # if iteration % 100 == 0:
-            # world.add_pop(new_pop)
+        
+        if step_nr >= max_simulation_steps:
+            logger.info(f"Simulation ended at step {step_nr}")
+            break
+        
+        if not paused:
+            step_nr += 1
+        
+        # break
 
 def check_end_conditions(world):
     return len(PopManager.get_pops()) == 0 or world_reached_goal(world)
@@ -166,15 +197,29 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    size = 128
+    size = 256
     world_width = size
     world_height = size
-    initial_pop_count = 25
+    initial_pop_count = 2
     seed = 1010
     chunk_size = 16
     
-    # np.random.seed(hash(seed) % 2**32)
+    # Generate worlds in different sizes to test the performance of the world generation algorithm
+    # for i in range(1, 6):
+    #     timestamp = str(int(time.time()))
+    #     size = 16 * (2 ** i)
+    #     print(f"Size: {size}")
+    #     world = prep_world(size, size, initial_pop_count, seed, chunk_size)
+        
+    #     print(f"World size: {world.get_size()}. Generation time: {str(int(time.time()) - int(timestamp))} seconds")
     
+    world = prep_world(world_width, world_height, initial_pop_count, seed, chunk_size)
+    
+    # np.random.seed(hash(seed) % 2**32)
+
+    return world
+
+def prep_world(width, height, initial_pop_count, seed, chunk_size):
     pop_move_manager = PopMoveManagerInstance
     
     PopManager.add_pop_move_manager(pop_move_manager)
@@ -186,25 +231,25 @@ def prep_simulation():
     
     pop_move_manager.world = world
     
-    world.height = world_height
-    world.width = world_width
+    world.height = height
+    world.width = width
     
     world.prepare()
     
     for i in range(initial_pop_count):
         world.add_pop_at((random.randint(0, world.width-1), random.randint(0, world.height-1)))
-
+    
     return world
 
 def main():
     world = prep_simulation()
     
-    max_iterations = 10000
+    max_simulation_steps = 4000
     render_frequency = 250
     
     do_render = True # Set to True to render each step of the simulation to an image file
 
-    run_simulation(world, max_iterations=max_iterations, render=do_render, render_frequency=render_frequency)
+    run_simulation(world, max_simulation_steps=max_simulation_steps, render=do_render, render_frequency=render_frequency)
 
     logger.info("Simulation complete")
 
@@ -221,7 +266,7 @@ if __name__ == "__main__":
         
         timestamp = str(int(time.time()))
         
-        for logger in LoggerManager.loggers.values():
+        for logger in logger_manager.loggers.values():
             logger.flush_messages()
         
         # stats.print_stats()

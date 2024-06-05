@@ -1,5 +1,5 @@
 from enum import Enum
-from attr import dataclass
+from dataclasses import dataclass
 
 from object_types import Location
 

@@ -1,5 +1,8 @@
 from numpy import blackman
+
 from utils.logger import Logger
+
+from managers.logger_manager import logger_manager
 
 # This file contains the Blackboard class, which is a simple key-value store for sharing data between different parts of the AI system.
 class Blackboard:
@@ -8,7 +11,7 @@ class Blackboard:
     def __init__(self):
         self._data = {}
         
-        self.logger = Logger("blackboard")
+        self.logger = Logger("blackboard", logger_manager)
 
     def get(self, key, entity=None, action=None):
         source = None

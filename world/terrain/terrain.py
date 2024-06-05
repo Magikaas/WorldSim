@@ -1,5 +1,5 @@
+from dataclasses import field, dataclass
 from typing import Type
-from attr import dataclass
 from discord import Colour
 from obj.item.item import Item
 
@@ -19,7 +19,7 @@ class Terrain():
     speed_multiplier: float = 1.0   
     fertility: int = 1
     can_spawn_resource: bool = False
-    possible_resources: dict[int, Type] = {}
+    possible_resources: dict[int, Type] = field(default_factory=dict)
     
     def get_pathing_cost(self):
         return 1 / self.speed_multiplier

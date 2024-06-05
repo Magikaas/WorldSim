@@ -18,10 +18,10 @@ class LogLevel(Enum):
     DEBUG = 5
 
 class Logger:
-    def __init__(self, name: str):
+    def __init__(self, name: str, manager: LoggerManager):
         self.name = name
         self.messages = {}
-        LoggerManager.loggers[name] = self
+        manager.loggers[name] = self
     
     def log(self, log_level, message: str, *args, actor: obj.worldobj.entity.Entity = None):
         prefix = self.name.ljust(20)
@@ -31,9 +31,16 @@ class Logger:
         if log_level not in self.messages:
             self.messages[log_level] = []
         
-        # self.messages[log_level].append(log_message)
+        self.messages[log_level].append(log_message)
         
-        # log_message = f"[{actor_name}] [{level}] [{prefix}] {message}" + (" " if len(args) > 0 else "") + ' '.join([str(i) for i in args])
+        if actor is not None:
+            actor_name = actor.name
+        else:
+            actor_name = "None"
+        
+        level = str(log_level).split('.')[1]
+        
+        log_message = f"[{actor_name}] [{level}] [{prefix}] {message}" + (" " if len(args) > 0 else "") + ' '.join([str(i) for i in args])
         
         # print(log_message)
         
