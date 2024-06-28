@@ -14,6 +14,7 @@ class TileRenderer():
             return tile.colour_override
         
         num_pops = len(tile.pops)
+        has_building = tile.has_building()
         num_animals = len(tile.animals)
         has_resourcenode = hasattr(tile, 'resourcenode') and type(tile.resourcenode) is not type(NoResource())
         
@@ -25,6 +26,10 @@ class TileRenderer():
                 if self.should_render(map_render_type, MapRenderType.POPS) and num_pops > 0:
                     # Render the pop as a purple square
                     coordinate_colour = (255, 0, 255)
+                    break
+                elif self.should_render(map_render_type, MapRenderType.BUILDINGS) and has_building:
+                    # Render the building as a grey square
+                    coordinate_colour = (128, 128, 128)
                     break
                 elif self.should_render(map_render_type, MapRenderType.ANIMALS) and num_animals > 0:
                     # Render the animal as a brown square

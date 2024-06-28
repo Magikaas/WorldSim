@@ -6,16 +6,15 @@ from obj.item import Item, ItemStack
 from obj.worldobj.entity import Entity, EntityState
 from obj.worldobj.building import Building
 
-from ai.condition import Condition, OnLocationCondition, HasItemsCondition, BuildingExistsCondition, BlackboardContainsLocationCondition
+from ai.condition import Condition, OnLocationCondition, HasItemsCondition, BuildingExistsCondition, BlackboardContainsLocationCondition, PopHasMovesCondition
 from ai.blackboard import blackboard as Blackboard
 
 from managers.pop_manager import pop_manager as PopManager
+from managers.pop_move_manager import pop_move_manager as PopMoveManagerInstance
 
 from obj.worldobj.resourcenode import NoResource
 from object_types import Location
 from utils.logger import Logger
-
-from managers.pop_move_manager import pop_move_manager as PopMoveManagerInstance
 
 class ActionState(Enum):
     INACTIVE = 0
@@ -28,7 +27,7 @@ class Action(ABC):
         self.name = name
         self.parent_action = parent_action
         
-        self.logger = Logger("action - %s" % name, logger_manager)
+        self.logger = Logger("ActionType.%s" % name.upper(), logger_manager)
         
         self.pop_state = None
         
@@ -42,6 +41,9 @@ class Action(ABC):
         
         self.determine_conditions()
         self.determine_actions()
+    
+    def __str__(self):
+        return self.name
     
     def deactivate(self):
         self.logger.info("Deactivating action %s" % self.name, actor=self.entity)
@@ -77,8 +79,9 @@ class Action(ABC):
                     self.finish()
                     return True
                 
-                if self.retries > 50:
+                if self.retries > 15:
                     self.logger.error("Failed to execute action %s after %s retries" % (self.name, self.retries), actor=self.entity)
+                    self.reset()
             return False
         
         if self.is_active():
@@ -99,12 +102,14 @@ class Action(ABC):
     def check_prep_conditions(self) -> bool:
         for condition in self.conditions["prep"]:
             if condition.check_condition() == False:
+                # self.logger.debug("Pre condition %s for action %s failed" % (condition.type, self), actor=self.entity)
                 return False
         return True
     
     def check_post_conditions(self) -> bool:
         for condition in self.conditions["post"]:
             if condition.check_condition() == False:
+                # self.logger.debug("Post condition %s for action %s failed" % (condition.type, self), actor=self.entity)
                 return False
         return True
     
@@ -142,9 +147,13 @@ class CompositeAction(Action):
             self.activate()
         return self.check_post_conditions()
     
+    def get_active_action(self) -> Action|None:
+        for action in self.actions:
+            if action.is_active():
+                return action
+        return None
+    
     def update(self) -> bool:
-        # self.logger.debug("Updating composite action %s" % self.name)
-        
         result = True
         
         for action in self.actions:
@@ -177,9 +186,14 @@ class MoveAction(Action):
         
         self.logger.debug("Creating move action to location %s" % str(location), actor=entity)
     
+    def __str__(self):
+        return super().__str__() + ":" + str(self.location)
+    
     def determine_conditions(self):
         self.add_prep_condition(OnLocationCondition(entity_id=self.entity.id, location=self.location).invert())
+        # self.add_prep_condition(PopHasMovesCondition(entity_id=self.entity.id).invert())
         self.add_post_condition(OnLocationCondition(entity_id=self.entity.id, location=self.location))
+        # self.add_post_condition(PopHasMovesCondition(entity_id=self.entity.id))
     
     def start(self):
         world = self.entity.world
@@ -220,6 +234,8 @@ class MoveAction(Action):
         if move is None:
             self.finish()
             return False
+        
+        return True
 
 class BuildAction(Action):
     def __init__(self, entity: Entity, building: Building, target_tile, parent_action: CompositeAction|None = None):
@@ -228,6 +244,9 @@ class BuildAction(Action):
         self.target_tile = target_tile
         
         super().__init__(name="build", entity=entity, parent_action=parent_action)
+    
+    def __str__(self):
+        return super().__str__() + ":" + str(self.target_tile) + ":" + self.building.name
     
     def is_done(self):
         return self.entity.state == EntityState.IDLE
@@ -252,7 +271,7 @@ class BuildAction(Action):
         
         tile.build(self.building, self.entity)
         
-        if self.entity.state == EntityState.IDLE:
+        if tile.has_building() and tile.building == self.building:
             self.finish()
             return True
         
@@ -266,6 +285,9 @@ class LocateResourceAction(Action):
         self.pop_state = EntityState.SEARCHING
         
         super().__init__(name="locate_resource", entity=entity, parent_action=parent_action)
+    
+    def __str__(self):
+        return super().__str__() + ":" + self.resource.name
     
     def determine_conditions(self):
         # Check if the blackboard has a location for the resource
@@ -332,6 +354,9 @@ class HarvestAction(Action):
         self.amount = amount
         self.pop_state = EntityState.GATHERING
     
+    def __str__(self):
+        return super().__str__() + ":" + str(self.amount)
+    
     def start(self):
         world = self.entity.world
         
@@ -344,6 +369,8 @@ class HarvestAction(Action):
         if type(resourcenode) == type(NoResource()):
             self.logger.warn("No resource node found at location %s" % str(location), actor=self.entity)
             return False
+        else:
+            self.logger.info("Harvesting resource %s from node %s" % (resourcenode.harvestable_resource.name, resourcenode.name), actor=self.entity)
         
         item = resourcenode.harvestable_resource
         
@@ -367,6 +394,9 @@ class GatherAction(CompositeAction):
         super().__init__(name="gather", entity=entity, parent_action=parent_action)
         
         self.logger = Logger("action - %s" % (self.name), logger_manager)
+    
+    def __str__(self):
+        return super().__str__() + ":" + str(self.resource)
     
     def determine_conditions(self):
         self.add_prep_condition(HasItemsCondition(entity_id=self.entity.id, item=self.resource).invert())

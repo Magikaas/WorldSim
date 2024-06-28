@@ -7,6 +7,7 @@ from obj.item import Item, ItemStack
 
 from managers.pop_manager import pop_manager as PopManager
 from managers.logger_manager import logger_manager
+from managers.pop_move_manager import pop_move_manager as PopMoveManagerInstance
 
 from obj.worldobj.entity import Entity
 from obj.worldobj.building import Building
@@ -20,6 +21,11 @@ if TYPE_CHECKING:
     import world
     import world.tile
 
+class ConditionFailureConsequence(Enum):
+    REPEAT = "Repeat"
+    ABORT = "Abort"
+    CONTINUE = "Continue"
+
 class PropertyCheckOperator(Enum):
     EQUALS = "=="
     GREATER_THAN = ">"
@@ -31,6 +37,8 @@ class Condition(ABC):
     def __init__(self, type: str):
         self.type = type
         self.inverted = False
+        
+        self.failure_consequence = ConditionFailureConsequence.REPEAT
         
         self.logger = Logger(type, logger_manager)
     
@@ -70,6 +78,8 @@ class OnLocationCondition(Condition):
         super().__init__(type="move")
         self.entity = PopManager.get_pop(entity_id)
         self.location = location
+        
+        self.failure_consequence = ConditionFailureConsequence.ABORT
     
     def check(self):
         return self.entity.location == self.location
@@ -106,6 +116,8 @@ class BuildingExistsCondition(Condition):
         super().__init__(type="building_exists")
         self.building = building
         self.target_tile = target_tile
+        
+        self.failure_consequence = ConditionFailureConsequence.ABORT
     
     def check(self):
         if not self.target_tile.has_building():
@@ -165,3 +177,11 @@ class BlackboardContainsLocationCondition(Condition):
             return False
         
         return False
+
+class PopHasMovesCondition(Condition):
+    def __init__(self, entity_id: int):
+        super().__init__(type="pop_has_moves")
+        self.entity = PopManager.get_pop(entity_id)
+    
+    def check(self):
+        return PopMoveManagerInstance.get_move_for_pop(self.entity) is not None

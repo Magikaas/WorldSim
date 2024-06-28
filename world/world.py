@@ -287,7 +287,7 @@ class World(RenderableObserver):
                 for j in range(-distance, distance + 1):
                     target = (x + i, y + j)
                     if self.is_land_tile(target):
-                        return target
+                        return (target[0] % self.width, target[1] % self.height)
             distance += 1
     
     def get_distance_between(self, location1, location2):
@@ -466,32 +466,6 @@ class World(RenderableObserver):
         chunk_nodepath = self.pathfind(pop, target_location, grid=chunkgrid_nodes)
         
         path = Path(pop)
-    
-    def pathfind_new(self, start_location: Location, target_location: Location, grid=None):
-        if grid is None:
-            grid, offsets = self.prep_pathfinder(start_location, target_location)
-        else:
-            offsets = (0, 0)
-        
-        nodepath = None
-        
-        while nodepath is None:
-            try:
-                nodepath, runs = self.pathfinder.find_path(start=grid.node(start_location[0] - offsets[0], start_location[1] - offsets[1]), end=grid.node(target_location[0] - offsets[0], target_location[1] - offsets[1]), graph=grid)
-            except Exception as e:
-                self.logger.debug("Error finding path:", e)
-        
-        # path = Path(None)
-        
-        # for node in nodepath:
-        #     x = node.x + offsets[0]
-        #     y = node.y + offsets[1]
-            
-        #     pop_move = PopMove(None, self.get_tile((x, y)))
-            
-        #     path.add_move((x, y))
-        
-        return nodepath
     
     def pathfind(self, pop, target_location: Location, grid=None):
         if self.paths.get(pop.location) is not None:

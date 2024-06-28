@@ -10,6 +10,9 @@ class Building(WorldObject):
         self.type = WORLD_OBJECT_TYPE.BUILDING
         self.materials = materials
     
+    def __str__(self):
+        return self.name
+    
     def can_build(self, inventory):
         for material in self.materials:
             if inventory.get_quantity(material.item) < material.amount:

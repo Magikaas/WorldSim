@@ -25,11 +25,13 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
     
     sim_seed = world.seed
     
-    scale = 4
+    scale = 2
+    
+    show_tooltip = True
     
     show_location = True
     show_status = True
-    show_goals = False
+    show_goals = True
     show_items = True
     
     pygame.init()
@@ -57,7 +59,7 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
     paused = False
     
     while True:
-        keys = pygame.key.get_pressed()
+        keys = pygame.key.get_just_released()
         
         if keys[pygame.K_SPACE]:
             paused = not paused
@@ -84,12 +86,12 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
         if keys[pygame.K_o]:
             for pop in PopManager.get_pops():
                 pop.food = 0
-                pop.water = 0
+                # pop.water = 0
         
         # clear()
         if render:
             pygame.event.get()
-            # clock.tick(15)
+            # clock.tick(5)
         
         if render:
             surface = world.render(surface=surface, scale=scale, output=RenderOutput.VARIABLE)
@@ -117,54 +119,96 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
                 
                 surface = world.render(surface=surface, scale=scale, output=RenderOutput.FILE, filename=filename)
             
-            # Show state of each pop on screen
-            for pop in PopManager.get_pops():
-                pop_location = pop.location
-                pop_location = (pop_location[0] * scale, pop_location[1] * scale)
-                if show_location:
-                    text = font.render(pop.name, True, (255, 255, 255))
-                    
-                    window.blit(text, pop_location)
+            if show_tooltip:
+                tooltip_width = 300
                 
-                if show_goals:
-                    # Show the pop's current goal
-                    goal = pop.get_current_goal()
-                    
-                    goal_location = (pop_location[0], pop_location[1] + 20)
-                    
-                    goal_string = str(goal.type) if goal is not None else "None"
-                    
-                    goal_text = font.render(goal_string, True, (255, 255, 255))
-                    
-                    window.blit(goal_text, goal_location)
+                text_offset = 0
                 
-                if show_status:
-                    # Show the pop's status
-                    pop_status_text = font.render(f"Health: {pop.health}, Food: {pop.food}, Water: {pop.water}", True, (255, 255, 255))
+                # Show state of each pop on screen
+                for pop in PopManager.get_pops():
+                    tooltip_height = 0
                     
-                    pop_status_text_location = (pop_location[0], pop_location[1] + 20)
+                    pop_location = pop.location
+                    pop_location = (pop_location[0] * scale, pop_location[1] * scale)
                     
-                    window.blit(pop_status_text, pop_status_text_location)
-                
-                if show_items:
-                    # Show the pop's inventory
-                    inventory = pop.inventory
+                    text_offset = 0
                     
-                    x = 40
+                    if show_goals:
+                        tooltip_height += 20
                     
-                    items = inventory.items
+                    if show_status:
+                        tooltip_height += 20
                     
-                    for item_name in items:
-                        inventory_location = (pop_location[0], pop_location[1] + x)
+                    if show_items:
+                        inventory = pop.inventory
+                            
+                        items = inventory.items
                         
-                        inventory_text = font.render(str(items[item_name]), True, (255, 255, 255))
+                        tooltip_height += 20 * len(items)
+                    
+                    if show_location:
+                        tooltip_height += 20
+                    
+                    if text_offset > tooltip_height:
+                        tooltip_height = text_offset
+                    
+                    tooltip_height += 5
+                    
+                    text_offset = 0
+                    
+                    # Render the tooltip
+                    tooltip_location = (pop_location[0] - 5, pop_location[1] - 5)
+                    
+                    pygame.draw.rect(window, (0, 0, 0), (tooltip_location[0], tooltip_location[1], tooltip_width, tooltip_height))
+                    
+                    if show_location:
+                        text = font.render(pop.name, True, (255, 255, 255))
                         
-                        window.blit(inventory_text, inventory_location)
+                        window.blit(text, pop_location)
                         
-                        x += 20
-                
-                # Render the new frame completely
-                pygame.display.flip()
+                        text_offset += 20
+                    
+                    if show_goals:
+                        # Show the pop's current goal
+                        goal = pop.get_current_goal()
+                        
+                        goal_location = (pop_location[0], pop_location[1] + text_offset)
+                        
+                        goal_string = "Goal: " + (str(goal.type) if goal is not None else "None") + " - Tries: " + str(goal.tries) if goal is not None else "None"
+                        
+                        goal_text = font.render(goal_string, True, (255, 255, 255))
+                        
+                        window.blit(goal_text, goal_location)
+                        
+                        text_offset += 20
+                    
+                    if show_status:
+                        # Show the pop's status
+                        pop_status_text = font.render(f"Health: {pop.health}, Food: {pop.food}, Water: {pop.water}", True, (255, 255, 255))
+                        
+                        pop_status_text_location = (pop_location[0], pop_location[1] + text_offset)
+                        
+                        window.blit(pop_status_text, pop_status_text_location)
+                        
+                        text_offset += 20
+                    
+                    if show_items:
+                        # Show the pop's inventory
+                        inventory = pop.inventory
+                        
+                        items = inventory.items
+                        
+                        for item_name in items:
+                            inventory_location = (pop_location[0], pop_location[1] + text_offset)
+                            
+                            inventory_text = font.render(str(items[item_name]), True, (255, 255, 255))
+                            
+                            window.blit(inventory_text, inventory_location)
+                        
+                            text_offset += 20
+                    
+            # Render the new frame completely
+            pygame.display.flip()
         
         if step_nr % render_frequency == 0:
             logger.info(f"Step {step_nr}. Time millis: {pygame.time.get_ticks()}. Pops: {len(PopManager.get_pops())}")
@@ -197,10 +241,10 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    size = 256
+    size = 512
     world_width = size
     world_height = size
-    initial_pop_count = 2
+    initial_pop_count = 1
     seed = 1010
     chunk_size = 16
     
@@ -244,7 +288,7 @@ def prep_world(width, height, initial_pop_count, seed, chunk_size):
 def main():
     world = prep_simulation()
     
-    max_simulation_steps = 4000
+    max_simulation_steps = 2000
     render_frequency = 250
     
     do_render = True # Set to True to render each step of the simulation to an image file

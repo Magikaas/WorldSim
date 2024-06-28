@@ -1,4 +1,5 @@
 from abc import ABC
+from poplib import CR
 
 class EntityState:
     IDLE = "idle"
@@ -16,6 +17,7 @@ class EntityState:
     HARVESTING = "harvesting"
     BUILDING = "building"
     SEARCHING = "searching"
+    CRAFTING = "crafting"
 
 class Entity(ABC):
     def __init__(self, id, name, location, world, age, role, health, food, water, state, speed):

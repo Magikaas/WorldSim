@@ -44,6 +44,7 @@ class PopMoveManager:
             if move.is_done():
                 # self.logger.debug("Pop %s has arrived at %s" % (move.pop.name, move.destination_tile.location))
                 self.move_pop_to_tile(pop=move.pop, destination=move.destination_tile)
+                self.logger.debug("Step: Pop %s moved to next tile (%s)" % (move.pop.name, move.destination_tile.location), actor=move.pop)
                 self.popmoves[popid] = self.popmoves[popid][1:]
     
     def empty_moves(self, pop):
@@ -60,13 +61,15 @@ class PopMoveManager:
         if popmove.pop.id not in self.popmoves:
             self.popmoves[popmove.pop.id] = []
         
+        self.logger.debug("Queued move for pop %s to %s" % (popmove.pop.name, popmove.destination_tile.location), actor=popmove.pop)
+        
         self.popmoves[popmove.pop.id].append(popmove)
     
     def move_pop_to_tile(self, pop: obj.worldobj.pop.Pop, destination: world.tile.Tile):
         # print("Moving pop %s to %s" % (pop.location, direction))
         total_distance = abs(pop.location[0] - destination.location[0]) + abs(pop.location[1] - destination.location[1])
         
-        if (total_distance > 2 and total_distance < 250) or total_distance == 0:
+        if (total_distance > 2 and total_distance < (self.world.width - 1)) or total_distance == 0:
             self.logger.error("Pop %s is moving more than 1 tile at a time. This is not allowed" % pop.name)
             return
         

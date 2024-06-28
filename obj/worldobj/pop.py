@@ -75,13 +75,26 @@ class Pop(Entity):
     def update(self):
         self.pop_goal_manager.perform_goals()
         
-        if not self.pop_goal_manager.get_current_goal():
-            if not self.world.is_land_tile(self.location):
-                build_location = self.world.get_closest_land_tile_location(self.location)
-            else:
+        current_goal = self.pop_goal_manager.get_active_foreground_goal()
+        
+        if not current_goal:
+            target_tile_has_no_building = False
+            
+            while not target_tile_has_no_building:
                 build_location = (random.randint(self.location[0] - 10, self.location[0] + 10), random.randint(self.location[1] - 10, self.location[1] + 10))
+                if build_location[0] < 0:
+                    build_location = (build_location[0] % self.world.width, build_location[1])
+                if build_location[1] < 0:
+                    build_location = (build_location[0], build_location[1] % self.world.height)
+                
+                if not self.world.is_land_tile(build_location):
+                    build_location = self.world.get_closest_land_tile_location(build_location)
+                
+                tile = self.world.get_tile(build_location)
+                target_tile_has_no_building = not tile.has_building()
             # random_location = (random.randint(0, self.world.width - 1), random.randint(0, self.world.height - 1))
             self.pop_goal_manager.add_goal(BuildGoal(entity=self, building=Hut(), target_location=build_location))
+        
         
         # Count down food and water
         if self.food > 0:
@@ -122,6 +135,7 @@ class Pop(Entity):
 @dataclass
 class Inventory:
     items: dict[Item, ItemStack] = field(default_factory=dict)
+    logger: Logger = Logger("inventory", logger_manager)
     
     def add_item(self, added_item: ItemStack):
         for item in self.items:
@@ -134,14 +148,15 @@ class Inventory:
 
     def remove_item(self, itemstack: ItemStack):
         if itemstack.item.name not in self.items:
-            print("Attempting to remove an item from inventory that is not present")
+            self.logger.debug("Attempting to remove an item from inventory that is not present", actor=None)
             return
         
         if self.items[itemstack.item.name].amount < itemstack.amount:
-            print("Attempting to remove more of an item from inventory than is present")
+            self.logger.debug("Attempting to remove more of an item from inventory than is present", actor=None)
             return
         
         self.items[itemstack.item.name].amount -= itemstack.amount
+        self.logger.debug("Removed %s from inventory" % itemstack.item.name, actor=None)
     
     def has_item(self, item):
         return item.name in self.items

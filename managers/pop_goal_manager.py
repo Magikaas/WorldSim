@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
-from ai.goal import Goal
+from ai.goal import Goal, GoalPriority
 from utils.logger import Logger
 
 from managers.logger_manager import logger_manager
@@ -21,6 +21,12 @@ class PopGoalManager:
     
     def add_goal(self, goal):
         self.goals.append(goal)
+    
+    def get_active_foreground_goal(self) -> Goal|None:
+        for goal in self.goals:
+            if goal.priority is not GoalPriority.BACKGROUND and not goal.is_fulfilled():
+                return goal
+        return None
     
     def perform_goals(self):
         current_goal = self.get_current_goal()
@@ -43,7 +49,7 @@ class PopGoalManager:
                         current_goal.reset()
                 break
     
-    def get_current_goal(self) -> Goal:
+    def get_current_goal(self) -> Goal|None:
         if len(self.goals) > 0:
             for goal in self.goals:
                 if not goal.is_fulfilled():
@@ -52,3 +58,6 @@ class PopGoalManager:
             return None
         
         return None
+    
+    def get_pop_goals(self) -> List[ai.goal.Goal]:
+        return self.goals

@@ -14,7 +14,7 @@ from utils.logger import Logger
 
 from managers.logger_manager import logger_manager
 
-from object_types import Location
+from object_types import Colour, Location
 
 if TYPE_CHECKING:
     import obj.worldobj.resourcenode
@@ -29,6 +29,7 @@ class Tile(Subject):
     terrain: Terrain
     biome: Biome
     building: Building
+    colour_override: Colour|None
     location: Location
     
     def __init__(self, location: Location, local_coordinates: Location, terrain: Terrain, biome: Biome):
@@ -46,6 +47,9 @@ class Tile(Subject):
         
         self.colour_override = None
         self.dirty = True
+    
+    def __str__(self):
+        return "Tile%s" % str(self.location)
     
     def add_pop(self, pop):
         if len(self.pops) == 0:
@@ -105,6 +109,7 @@ class Tile(Subject):
                 pop.inventory.remove_item(material)
             
             self.building = building
+            self.colour_override = None
             self.notify_observers()
             return True
         else:

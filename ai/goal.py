@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+from hmac import new
 from typing import List
 
 from obj.item import Item, ItemStack, Food, Potable
@@ -7,7 +8,7 @@ from obj.item.item import Liquid
 from obj.worldobj.entity import Entity
 from obj.worldobj.building import Building
 from ai.condition import Condition, BuildingExistsCondition, HasItemsCondition, EntityPropertyCondition, PropertyCheckOperator
-from ai.action import Action, MoveAction, BuildAction, GatherAction
+from ai.action import Action, CompositeAction, MoveAction, BuildAction, GatherAction
 
 from managers.pop_manager import pop_manager as PopManager
 from managers.logger_manager import logger_manager
@@ -19,6 +20,12 @@ class GoalType(Enum):
     RANDOM_SEARCH = "Random Search"
     RESOURCE_HARVEST = "Resource Harvest"
     BUILD = "Build"
+
+class GoalPriority(Enum):
+    BACKGROUND = 0
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
 
 class Goal(ABC):
     actions: List[Action]
@@ -35,13 +42,21 @@ class Goal(ABC):
         
         self.entity = PopManager.get_pop(self.entity.id)
         
+        self.priority = GoalPriority.MEDIUM
+        
         self.determine_conditions()
         self.determine_actions()
+        
+        self.tries = 0
     
     def reset(self):
         self.fulfilled = False
         self.actions = []
         self.conditions = {"prep": [], "post": []}
+        
+        self.tries = 0
+        
+        self.logger.debug("Goal reset.", actor=self.entity)
         
         self.determine_conditions()
         self.determine_actions()
@@ -64,32 +79,70 @@ class Goal(ABC):
     def execute(self):
         all_actions_finished = True
         
+        self.logger.debug(f"Executing goal {self}.", actor=self.entity)
+        
+        actions_string = "|".join([str(action) if not action.is_finished() else '' for action in self.actions])
+        inventory_string = "|".join([str(self.entity.inventory.items[item]) for item in self.entity.inventory.items])
+        
+        self.logger.debug(f"Actions: {actions_string}", actor=self.entity)
+        self.logger.debug(f"Inventory: {inventory_string}", actor=self.entity)
+        
         for action in self.actions:
+            self.logger.debug(f"Checking action {action}.", actor=self.entity)
             if not action.is_active() and not action.is_finished() and action.check_post_conditions():
+                action.finish()
+                self.logger.debug(f"Action {action} finished without execution - Already completed.", actor=self.entity)
+                continue
+            
+            if action.is_active() and action.check_post_conditions():
+                self.logger.debug(f"Action {action} finished normally.", actor=self.entity)
+                self.tries = 0
                 action.finish()
                 continue
             
             if action.is_finished():
+                if not action.check_post_conditions():
+                    self.logger.debug(f"Action {action} finished, but post conditions not met.", actor=self.entity)
+                    self.reset()
+                    break
+                self.logger.debug(f"Action {action} previously finished.", actor=self.entity)
                 continue
             
             if action.is_active():
-                action.update()
+                self.logger.debug(f"Action {action} is active, update it.", actor=self.entity)
+                result = action.update()
+                if not result:
+                    is_not_move_action = not isinstance(action, CompositeAction) or not isinstance(action.get_active_action(), MoveAction)
+                    is_not_move_action = is_not_move_action and not isinstance(action, MoveAction)
+                    if is_not_move_action:
+                        self.tries += 1
             else:
+                self.logger.debug(f"Action {action} is not active, start it.", actor=self.entity)
                 action.execute()
             
+            # Only consider the goal 'failed' if at least one action is still not finished at this point and a new action was not activated this cycle
             if not action.is_finished():
                 all_actions_finished = False
+                
+                if self.tries > 20:
+                    self.logger.debug(f"Action {action} failed.", actor=self.entity)
+                    self.reset()
+                    break
+            else:
+                continue
             
             break
         
         self.fulfilled = self.is_fulfilled()
         
         if self.fulfilled:
-            self.logger.debug("Goal fulfilled.")
+            self.logger.debug("Goal fulfilment status: FULFILLED.", actor=self.entity)
         else:
             if all_actions_finished:
-                self.logger.debug("Goal failed. Resetting.")
+                self.logger.debug("Goal fulfilment status: UNFULFILLED_ACTIONS_COMPLETE.", actor=self.entity)
                 self.reset()
+            else:
+                self.logger.debug("Goal fulfilment status: UNFULFILLED_ONGOING.", actor=self.entity)
         
         return self.fulfilled
     
@@ -98,17 +151,20 @@ class Goal(ABC):
             return False
         
         if len(self.actions) == 0:
+            self.determine_actions()
             return False
         
         return self.check_prep_conditions()
     
     def is_fulfilled(self):
-        if self.fulfilled:
-            return True
-        
         for condition in self.conditions["post"]:
             if not condition.check_condition():
                 return False
+        
+        for action in self.actions:
+            if not action.is_finished():
+                return False
+        
         return True
     
     def add_prep_condition(self, condition: Condition):
@@ -130,6 +186,9 @@ class BuildGoal(Goal):
         self.target_location = target_location
         
         super().__init__(type=GoalType.BUILD)
+    
+    def __str__(self):
+        return "build_goal:" + str(self.building)
     
     def determine_conditions(self):
         tile = self.entity.world.get_tile(self.target_location)
@@ -166,6 +225,8 @@ class FoodGoal(Goal):
         self.min_food_value = min_food_value
         
         super().__init__(type=GoalType.RANDOM_SEARCH)
+        
+        self.priority = GoalPriority.BACKGROUND
     
     def determine_conditions(self):
         self.add_prep_condition(EntityPropertyCondition(entity_id=self.entity.id, property="food", value=self.min_food_value, operator=PropertyCheckOperator.LESS_THAN))
