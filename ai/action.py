@@ -1,12 +1,13 @@
 from enum import Enum
 from abc import ABC, abstractmethod
 
+from crafting.recipe import Recipe
 from managers.logger_manager import logger_manager
 from obj.item import Item, ItemStack
 from obj.worldobj.entity import Entity, EntityState
 from obj.worldobj.building import Building
 
-from ai.condition import Condition, OnLocationCondition, HasItemsCondition, BuildingExistsCondition, BlackboardContainsLocationCondition, PopHasMovesCondition
+from ai.condition import Condition, OnLocationCondition, HasItemsCondition, BuildingExistsCondition, BlackboardContainsLocationCondition
 from ai.blackboard import blackboard as Blackboard
 
 from managers.pop_manager import pop_manager as PopManager
@@ -39,7 +40,10 @@ class Action(ABC):
         
         self.entity = PopManager.get_pop(entity.id)
         
+        self.required_tools = []
+        
         self.determine_conditions()
+        
         self.determine_actions()
     
     def __str__(self):
@@ -58,8 +62,12 @@ class Action(ABC):
     
     def reset(self):
         self.logger.info("Resetting action %s" % self.name, actor=self.entity)
+        
+        self.conditions = {"prep": [], "post": []}
         self.state = ActionState.INACTIVE
         self.retries = 0
+        self.determine_conditions()
+        self.determine_actions()
     
     def finish(self):
         self.logger.info("Finishing action %s" % self.name, actor=self.entity)
@@ -67,6 +75,28 @@ class Action(ABC):
     
     def is_finished(self):
         return self.state == ActionState.DONE
+    
+    def get_closest_tile_with_resource(self, location: Location|str) -> Location|None:
+        world = self.entity.world
+        locations = []
+        
+        if isinstance(location, str) and location.startswith("resource_location:"):
+            locations = Blackboard.get(entity=self.entity, action=self.parent_action, key=location)
+            location = None
+        
+        if locations is not None and len(locations) > 0:
+            closest_location = world.find_closest_location(self.entity.location, locations, self.entity)
+            
+            if closest_location is not None:
+                location = closest_location
+        
+        if location is None:
+            self.logger.debug("No location found", actor=self.entity)
+            return False
+        
+        destination_tile = world.get_tile(location)
+        
+        return destination_tile
     
     def execute(self):
         self.retries += 1
@@ -198,28 +228,12 @@ class MoveAction(Action):
     def start(self):
         world = self.entity.world
         
-        location = self.location
-        locations = []
+        destination_tile = self.get_closest_tile_with_resource(location=self.location)
         
-        if isinstance(location, str) and location.startswith("resource_location:"):
-            locations = Blackboard.get(entity=self.entity, action=self.parent_action, key=location)
-            location = None
-        
-        if locations is not None and len(locations) > 0:
-            closest_location = self.entity.world.find_closest_location(self.entity.location, locations, self.entity)
-            
-            if closest_location is not None:
-                location = closest_location
-        
-        if location is None:
-            self.logger.debug("No location found", actor=self.entity)
+        if destination_tile is False:
             return False
         
-        destination_tile = world.get_tile(location)
-        
         path = world.pathfind(pop=self.entity, target_location=destination_tile.location)
-        
-        self.logger.debug("Created path from", self.entity.location, "to tile:", destination_tile.location, "with length:", len(path.moves), actor=self.entity)
         
         PopMoveManagerInstance.empty_moves(self.entity)
         
@@ -303,14 +317,19 @@ class LocateResourceAction(Action):
         self.shortest_path_length = 1000
         
         for tile in resource_tiles:
-            path = world.pathfind(pop=self.entity, target_location=tile.location)
-            # path = world.pathfind(start_location=self.entity.location, target_location=tile.location)
+            distance = abs(self.entity.location[0] - tile.location[0]) + abs(self.entity.location[1] - tile.location[1])
             
             Blackboard.add_resource_location(resource=self.resource, location=tile.location)
             
-            if (len(path.moves) < self.shortest_path_length):
-                self.shortest_path_length = len(path.moves)
+            if distance < self.shortest_path_length:
+                self.shortest_path_length = distance
                 self.closest_tile = tile
+            
+            # path = world.pathfind(pop=self.entity, target_location=tile.location)
+            
+            # if (len(path.moves) < self.shortest_path_length):
+            #     self.shortest_path_length = len(path.moves)
+            #     self.closest_tile = tile
         
         return self.closest_tile is not None
     
@@ -409,6 +428,7 @@ class GatherAction(CompositeAction):
         resource_key = ':'.join(["resource_location", item.category, item.name]) if isinstance(item, Item) else type(item)
         
         self.add_action(LocateResourceAction(entity=self.entity, resource=item, parent_action=self))
+        self.add_action(GuaranteeRequiredToolsAction(entity=self.entity, parent_action=self))
         self.add_action(MoveAction(entity=self.entity, location=resource_key, parent_action=self))
         self.add_action(HarvestAction(entity=self.entity, amount=amount, parent_action=self))
     
@@ -417,6 +437,49 @@ class GatherAction(CompositeAction):
     
     def update(self) -> bool:
         return super().update()
+
+class CraftCompositeAction(CompositeAction):
+    def __init__(self, entity: Entity, recipe: Recipe, parent_action: CompositeAction|None = None):
+        self.recipe = recipe
+        self.pop_state = EntityState.CRAFTING
+        
+        super().__init__(name="craft_composite", entity=entity, parent_action=parent_action)
+    
+    def __str__(self):
+        return super().__str__() + ":" + str(self.recipe)
+    
+    def determine_actions(self):
+        for item in self.recipe.materials:
+            self.add_action(GatherAction(entity=self.entity, resource=item, parent_action=self))
+        
+        self.add_action(CraftAction(entity=self.entity, recipe=self.recipe, parent_action=self))
+
+class CraftAction(Action):
+    def __init__(self, entity: Entity, recipe: Recipe, parent_action: CompositeAction|None = None):
+        self.recipe = recipe
+        
+        super().__init__(name="craft", entity=entity, parent_action=parent_action)
+        
+        self.pop_state = EntityState.CRAFTING
+    
+    def __str__(self):
+        return super().__str__() + ":" + str(self.recipe)
+    
+    def determine_conditions(self):
+        for item in self.recipe.materials:
+            self.add_prep_condition(HasItemsCondition(entity_id=self.entity.id, item=item))
+    
+    def start(self):
+        self.logger.debug("Crafting %s" % (self.recipe.result.item.name), actor=self.entity)
+        
+        self.entity.state = self.pop_state
+        
+        self.entity.craft(self.recipe)
+        
+        self.finish()
+    
+    def update(self):
+        return False
 
 class DrinkAction(Action):
     def __init__(self, entity: Entity, parent_action: CompositeAction|None = None):
@@ -430,3 +493,68 @@ class DrinkAction(Action):
         water = resourcenode.harvestable_resource
         
         # self.entity.drink(water)
+
+class GuaranteeRequiredToolsAction(CompositeAction):
+    def __init__(self, entity: Entity, parent_action: CompositeAction|None = None):
+        super().__init__(name="guarantee_required_tools", entity=entity, parent_action=parent_action)
+        
+        parent_action_actions = parent_action.actions if parent_action is not None else []
+        
+        if len(parent_action_actions) == 0:
+            self.logger.warn("Parent action has no actions", actor=self.entity)
+            return
+        
+        resource = None
+        required_tools = []
+        
+        for action in parent_action_actions:
+            if isinstance(action, GatherAction):
+                resource = action.resource
+                
+                break
+            
+        return
+        
+        self.resource = resource
+        self.required_tools = required_tools
+        
+        item = self.resource.item if isinstance(self.resource, ItemStack) else self.resource
+        
+        location = ':'.join(["resource_location", item.category, item.name]) if isinstance(item, Item) else type(item)
+        
+        world = self.entity.world
+        
+        if isinstance(location, str) and location.startswith("resource_location:"):
+            locations = Blackboard.get(entity=self.entity, action=self.parent_action, key=location)
+            location = None
+        
+        if locations is not None and len(locations) > 0:
+            closest_location = world.find_closest_location(self.entity.location, locations, self.entity)
+            
+            if closest_location is not None:
+                location = closest_location
+        
+        if location is None:
+            self.logger.debug("No location found", actor=self.entity)
+            return
+        
+        destination_tile = world.get_tile(location)
+        
+        resourcenode = destination_tile.resourcenode
+        
+        required_tool = resourcenode.harvest_tool
+        
+        if required_tool is not None:
+            self.required_tools = [required_tool]
+    
+    def __str__(self):
+        return super().__str__() + ":" + str(self.required_tools)
+    
+    def determine_conditions(self):
+        for tool in self.required_tools:
+            self.add_prep_condition(HasItemsCondition(entity_id=self.entity.id, item=tool).invert())
+            self.add_post_condition(HasItemsCondition(entity_id=self.entity.id, item=tool))
+    
+    def determine_actions(self):
+        for tool in self.required_tools:
+            self.add_action(GatherAction(entity=self.entity, resource=tool, parent_action=self))

@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     import obj.worldobj.pop
 
 class PopManager():
-    _instance = None
     _id_counter = 1
     pops: dict[int, obj.worldobj.pop.Pop] = {}
     

@@ -37,7 +37,6 @@ class PopGoalManager:
             if current_goal is not None and passed_current_goal and goal is not current_goal:
                 break
             
-            # If a goal is already active, only start a new goal that is higher priority than the current goal
             if goal.can_execute():
                 goal.execute()
                 

@@ -13,15 +13,8 @@ if TYPE_CHECKING:
     import path
 
 class PopMoveManager:
-    _instance = None
     popmoves: dict[int, List[PopMove]] = {}
     world: world.World
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super(PopMoveManager, cls).__new__(cls)
-            
-        return cls._instance
     
     def __init__(self):
         self.logger = Logger("pop_move_manager", logger_manager)
@@ -48,6 +41,7 @@ class PopMoveManager:
                 self.popmoves[popid] = self.popmoves[popid][1:]
     
     def empty_moves(self, pop):
+        self.logger.debug("Emptying moves for pop %s" % pop.name, actor=pop)
         self.popmoves[pop.id] = []
     
     def get_move_for_pop(self, pop: obj.worldobj.pop.Pop):
@@ -61,7 +55,7 @@ class PopMoveManager:
         if popmove.pop.id not in self.popmoves:
             self.popmoves[popmove.pop.id] = []
         
-        self.logger.debug("Queued move for pop %s to %s" % (popmove.pop.name, popmove.destination_tile.location), actor=popmove.pop)
+        self.logger.debug("Queued move for pop %s:%s to %s (len:%s)" % (popmove.pop.name, popmove.pop.location, popmove.destination_tile.location, len(self.popmoves[popmove.pop.id])), actor=popmove.pop)
         
         self.popmoves[popmove.pop.id].append(popmove)
     

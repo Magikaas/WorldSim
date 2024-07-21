@@ -2,15 +2,19 @@
 # TODO: Make node slowly regenerate resources
 # TODO: 
 
+from dataclasses import dataclass, field
+from obj.item.item import Axe, BareHands, ItemStack, Pickaxe, Tool
 from world.worldobject import WorldObject, WORLD_OBJECT_TYPE
 from .harvestable import Harvestable, HarvestType
 from obj.item import Item, Wood, Stone, Apple
 
+@dataclass
 class ResourceNode(WorldObject, Harvestable):
-    def __init__(self, name, description, harvestable_resource, resource_amount=1000):
-        super().__init__(name=name, description=description, object_type=WORLD_OBJECT_TYPE.RESOURCE_NODE)
-        self.resource_amount = resource_amount
-        self.harvestable_resource = harvestable_resource
+    name: str = 'resource_node'
+    description: str = 'A resource node'
+    harvest_tool: Tool|None = None
+    harvestable_resource: Item = None
+    resource_amount: int = 1000
     
     def harvest(self, amount):
         if amount < 0:
@@ -22,29 +26,21 @@ class ResourceNode(WorldObject, Harvestable):
         else:
             self.resource_amount -= amount
         
-        return (self.harvestable_resource, amount)
+        harvested_items = ItemStack(self.harvestable_resource, amount)
+        return harvested_items
     
     def __str__(self):
         return f"ResourceNode: {self.harvestable_resource} {self.resource_amount}"
     
-    def get_resource_type(self):
-        return self.harvestable_resource
-    
-    def get_resource_amount(self):
-        return self.resource_amount
-    
     def is_available(self):
         return self.resource_amount > 0
 
+@dataclass
 class NoResource(ResourceNode):
-    def __init__(self):
-        super().__init__(name='no_resource', description='No resource', harvestable_resource=None, resource_amount=0)
-    
-    def harvest(self, amount):
-        return None
-    
-    def is_available(self):
-        return False
+    name: str = 'no_resource'
+    description: str = 'No resource'
+    harvestable_resource: Item = None
+    resource_amount: int = 0
 
 # Enum with different growth speeds for trees
 class TreeGrowthSpeed:
@@ -53,13 +49,12 @@ class TreeGrowthSpeed:
     FAST = 3
     BOOSTED = 5
 
+@dataclass
 class WoodResource(ResourceNode):
-    def __init__(self, type, harvest_type: HarvestType=None, harvestable_resource: Item=Wood()):
-        super().__init__(name=type, description="Test description tree", harvestable_resource=harvestable_resource)
-        self.type = type
-        self.harvest_type = harvest_type
-        self.harvestable_resource = harvestable_resource
-        # TODO: implement resource amount
+    name: str = 'wood_resource'
+    description: str = 'A tree resource'
+    harvest_tool: Tool|None = field(default_factory=Axe)
+    harvestable_resource: Item = field(default_factory=Wood)
     
     def __repr__(self):
         return f'{self.type} tree'
@@ -70,20 +65,29 @@ class WoodResource(ResourceNode):
     # Currently unlimited resources
     # TODO: Add check on resource amount
     def is_harvestable(self):
-        return self.harvest_type is not HarvestType.NONE
+        return self.harvest_tool is not HarvestType.NONE
 
+@dataclass
 class Oak(WoodResource):
-    def __init__(self):
-        super().__init__(type='oak', harvest_type=HarvestType.AXE, harvestable_resource=Wood())
+    name: str = 'oak'
+    harvest_tool: Tool = field(default_factory=Axe)
+    harvestable_resource: Item = field(default_factory=Wood)
 
+@dataclass
 class Cactus(WoodResource):
-    def __init__(self):
-        super().__init__(type='cactus', harvest_type=HarvestType.SICKLE)
+    name: str = 'cactus'
+    harvest_tool: Tool = field(default_factory=Axe)
+    harvestable_resource: Item = field(default_factory=Wood)
 
+@dataclass
 class AppleTree(WoodResource):
-    def __init__(self):
-        super().__init__(type='apple', harvest_type=HarvestType.BARE_HANDS, harvestable_resource=Apple())
+    name: str = 'apple_tree'
+    harvest_tool: Tool = field(default_factory=BareHands)
+    harvestable_resource: Item = field(default_factory=Apple)
 
+@dataclass
 class StoneResource(ResourceNode):
-    def __init__(self):
-        super().__init__(name='stone', description='A stone resource', harvestable_resource=Stone())
+    name: str
+    description: str = 'A stone resource'
+    harvest_tool: Tool|None = field(default_factory=Pickaxe)
+    harvestable_resource: Item = field(default_factory=Stone)

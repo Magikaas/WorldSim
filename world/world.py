@@ -6,6 +6,7 @@ import pygame
 
 from pathfinding.core.grid import Grid
 from pathfinding.finder.a_star import AStarFinder, DiagonalMovement
+from sympy import O
 
 from object_types import Location
 from world.terrain import Terrain, TerrainHeight
@@ -40,7 +41,6 @@ from observer import RenderableObserver
 
 # Longterm TODO: Make singleton possible with multiple 'Worlds'
 class World(RenderableObserver):
-    _instance = None
     width: int
     height: int
     seed: int
@@ -468,13 +468,7 @@ class World(RenderableObserver):
         path = Path(pop)
     
     def pathfind(self, pop, target_location: Location, grid=None):
-        if self.paths.get(pop.location) is not None:
-            if self.paths[pop.location].get(target_location) is not None:
-                return self.paths[pop.location][target_location]
-        
         if grid is None:
-            # grid = self.old_prep_pathfinder()
-            # offsets = (0, 0)
             grid, offsets = self.prep_pathfinder(pop.location, target_location)
         
         nodepath = None
@@ -497,11 +491,6 @@ class World(RenderableObserver):
             
             move = PopMove(pop, self.get_tile((x, y)))
             path.add_move(move)
-        
-        if self.paths.get(pop.location) is None:
-            self.paths[pop.location] = {}
-        
-        self.paths[pop.location][target_location] = path
         
         return path
     
@@ -561,7 +550,12 @@ class World(RenderableObserver):
                 
                 tile = chunk_tiles[(chunk_true_x, chunk_true_y)][chunk_x][chunk_y]
                 
-                gridnodes[x][y] = (1 / tile.terrain.speed_multiplier if tile.terrain.speed_multiplier > 0 else 0)
+                if tile.terrain is Ocean() or tile.terrain is ShallowCoastalWater():
+                    weight = 1000
+                else:
+                    weight = (1 / tile.terrain.speed_multiplier if tile.terrain.speed_multiplier > 0 else 0)
+                
+                gridnodes[x][y] = weight
         
         grid = Grid(width=len(gridnodes), height=len(gridnodes[0]), matrix=gridnodes, grid_id=0)
         

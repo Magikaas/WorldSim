@@ -25,7 +25,7 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
     
     sim_seed = world.seed
     
-    scale = 2
+    scale = 5
     
     show_tooltip = True
     
@@ -241,10 +241,10 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    size = 512
+    size = 256
     world_width = size
     world_height = size
-    initial_pop_count = 1
+    initial_pop_count = 4
     seed = 1010
     chunk_size = 16
     
@@ -315,7 +315,7 @@ if __name__ == "__main__":
         
         # stats.print_stats()
         with open("profile/" + timestamp + ".txt", "w") as f:
-            stats = pstats.Stats(profiler, stream=f).sort_stats('cumtime')
+            stats = pstats.Stats(profiler, stream=f).sort_stats('tottime')
             print("Printing stats")
             stats.print_stats()
             print("Finished printing stats")

@@ -6,6 +6,7 @@ import random
 
 from dataclasses import dataclass, field
 
+from crafting.recipe import Recipe
 from managers.pop_move_manager import pop_move_manager as PopMoveManagerInstance
 from managers.pop_goal_manager import PopGoalManager
 
@@ -62,6 +63,15 @@ class Pop(Entity):
     
     def add_item(self, itemstack: ItemStack):
         self.inventory.add_item(itemstack)
+    
+    def remove_item(self, itemstack: ItemStack):
+        self.inventory.remove_item(itemstack)
+    
+    def craft(self, recipe: Recipe):
+        for material in recipe.materials:
+            self.remove_item(material)
+        
+        self.add_item(recipe.result)
     
     def is_dead(self):
         return self.health <= 0
@@ -148,11 +158,11 @@ class Inventory:
 
     def remove_item(self, itemstack: ItemStack):
         if itemstack.item.name not in self.items:
-            self.logger.debug("Attempting to remove an item from inventory that is not present", actor=None)
+            self.logger.error("Attempting to remove an item from inventory that is not present", actor=None)
             return
         
         if self.items[itemstack.item.name].amount < itemstack.amount:
-            self.logger.debug("Attempting to remove more of an item from inventory than is present", actor=None)
+            self.logger.error("Attempting to remove more of an item from inventory than is present", actor=None)
             return
         
         self.items[itemstack.item.name].amount -= itemstack.amount
