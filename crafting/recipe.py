@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from obj.item.item import ItemStack
+from obj.item import ItemStack
 
 
 @dataclass

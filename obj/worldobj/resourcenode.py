@@ -3,8 +3,8 @@
 # TODO: 
 
 from dataclasses import dataclass, field
-from obj.item.item import Axe, BareHands, ItemStack, Pickaxe, Tool
-from world.worldobject import WorldObject, WORLD_OBJECT_TYPE
+from obj.item import Axe, BareHands, ItemStack, Pickaxe, Tool
+from world.worldobject import WorldObject
 from .harvestable import Harvestable, HarvestType
 from obj.item import Item, Wood, Stone, Apple
 

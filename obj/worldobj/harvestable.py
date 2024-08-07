@@ -1,8 +1,7 @@
 from typing import Protocol
 from enum import Enum
 
-from obj.item import Item
-from obj.item.item import Axe, Pickaxe
+from obj.item import Item, Axe, Pickaxe
 
 # Enum with types of harvest methods
 class HarvestType(Enum):

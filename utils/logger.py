@@ -34,7 +34,7 @@ class Logger:
         
         # print(log_message)
         
-        if len(self.log_store.get_messages()) > 25:
+        if len(self.log_store.get_messages()) > 250:
             self.log_store.flush_messages()
     
     def info(self, message: str, *args, actor=None):
@@ -53,6 +53,8 @@ class Logger:
         self.log(LogLevel.DEBUG, message, *args, actor=actor)
     
     def flush_messages(self):
+        self.log_store.flush_messages()
+        return
         if not os.path.exists("logs"):
             os.mkdir("logs")
         

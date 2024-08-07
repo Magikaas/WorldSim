@@ -2,8 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List
 
-from obj.item import ItemStack, Food
-from obj.item.item import Liquid, Water
+from obj.item import ItemStack, Food, Liquid, Water
 from obj.worldobj.entity import Entity
 from obj.worldobj.building import Building
 from ai.condition import Condition, BuildingExistsCondition, HasItemsCondition, EntityPropertyCondition, PropertyCheckOperator
@@ -211,7 +210,7 @@ class BuildGoal(Goal):
         tile = self.entity.world.get_tile(self.target_location)
         
         for material in materials:
-            self.actions.append(GatherAction(entity=self.entity, resource=material))
+            self.actions.append(GatherAction(entity=self.entity, target_item=material))
         
         self.actions.append(MoveAction(location=self.target_location, entity=self.entity))
         self.actions.append(BuildAction(entity=self.entity, building=self.building, target_tile=tile))
@@ -228,7 +227,7 @@ class GatherGoal(Goal):
         self.add_post_condition(HasItemsCondition(entity_id=self.entity.id, item=self.itemstack))
 
     def determine_actions(self):
-        self.actions.append(GatherAction(entity=self.entity, resource=self.itemstack))
+        self.actions.append(GatherAction(entity=self.entity, target_item=self.itemstack))
 
 class FoodGoal(Goal):
     def __init__(self, entity: Entity, min_food_value: int = 70):
@@ -245,7 +244,7 @@ class FoodGoal(Goal):
     
     def determine_actions(self):
         if self.entity.food < self.min_food_value and len(self.actions) == 0:
-            self.actions.append(GatherAction(entity=self.entity, resource=ItemStack(item=Food(), amount=15 + self.min_food_value - self.entity.food)))
+            self.actions.append(GatherAction(entity=self.entity, target_item=ItemStack(item=Food(), amount=15 + self.min_food_value - self.entity.food)))
 
 class DrinkGoal(Goal):
     def __init__(self, entity: Entity, min_food_value: int = 70):
@@ -261,4 +260,4 @@ class DrinkGoal(Goal):
     
     def determine_actions(self):
         if self.entity.water < self.min_food_value:
-            self.actions.append(GatherAction(entity=self.entity, resource=ItemStack(item=Water(), amount=50 + self.min_food_value - self.entity.water)))
+            self.actions.append(GatherAction(entity=self.entity, target_item=ItemStack(item=Water(), amount=50 + self.min_food_value - self.entity.water)))

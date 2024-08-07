@@ -24,6 +24,9 @@ class Item:
     
     requires_container: bool = False
     
+    def __str__(self):
+        return self.name
+    
     def __hash__(self):
         return hash(self.name)
     
@@ -78,28 +81,6 @@ class BareHands(Tool):
     name: str = "Bare Hands"
     description: str = "Your hands, useful for picking up items and punching things."
     durability: int = 0
-    max_durability: int = durability
-    
-    category: str = ItemCategory.TOOL
-    tool: bool = True
-
-@dataclass
-class Axe(Tool):
-    name: str = "Axe"
-    description: str = "A tool used for chopping down trees."
-    durability: int = 50
-    max_durability: int = durability
-    
-    category: str = ItemCategory.TOOL
-    tool: bool = True
-
-@dataclass
-class Pickaxe(Tool):
-    name: str = "Pickaxe"
-    description: str = "A tool used for mining stone."
-    value: int = 10
-    weight: int = 5
-    durability: int = 50
     max_durability: int = durability
     
     category: str = ItemCategory.TOOL
@@ -181,8 +162,8 @@ class ItemStack:
 
 @dataclass
 class Food(Item, Edible):
-    name: str = "NO FOOD NAME ENTERED"
-    description: str = "NO FOOD DESCRIPTION ENTERED"
+    name: str = "Any Food"
+    description: str = "Any Food Description"
     category: str = ItemCategory.FOOD
     edible: bool = True
     nutrition: int = 0
@@ -197,30 +178,10 @@ class Water(Item, Potable):
 
 @dataclass
 class Resource(Item):
-    name: str = "NO RESOURCE NAME ENTERED"
-    description: str = "NO RESOURCE DESCRIPTION ENTERED"
+    name: str = "Any Resource"
+    description: str = "Any Resource Description"
     category: str = ItemCategory.RESOURCE
     harvest_tool: Tool = None
-
-@dataclass
-class Wood(Resource):
-    name: str = "Wood"
-    description: str = "A piece of wood, useful for crafting and building."
-    value: int = 1
-    weight: int = 5
-    durability: int = 25
-    
-    harvest_tool: Tool = field(default_factory=Axe)
-
-@dataclass
-class Stone(Resource):
-    name: str = "Stone"
-    description: str = "A piece of stone, useful for crafting and building."
-    value: int = 1
-    weight: int = 5
-    durability: int = 25
-    
-    harvest_tool: Tool = field(default_factory=Pickaxe)
 
 @dataclass
 class Apple(Food):

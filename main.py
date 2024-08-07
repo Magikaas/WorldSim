@@ -11,6 +11,8 @@ from managers.logger_manager import logger_manager
 from world.world import world, World
 from managers.pop_manager import pop_manager as PopManager
 from managers.pop_move_manager import pop_move_manager as PopMoveManagerInstance
+from managers.recipe_manager import recipe_manager as RecipeManager
+from managers.item_manager import item_manager as ItemManager
 
 from utils.renderoutput import RenderOutput
 
@@ -241,25 +243,20 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    size = 256
+    size = 128
     world_width = size
     world_height = size
-    initial_pop_count = 4
+    initial_pop_count = 1
     seed = 1010
     chunk_size = 16
     
     # Generate worlds in different sizes to test the performance of the world generation algorithm
-    # for i in range(1, 6):
-    #     timestamp = str(int(time.time()))
-    #     size = 16 * (2 ** i)
-    #     print(f"Size: {size}")
-    #     world = prep_world(size, size, initial_pop_count, seed, chunk_size)
-        
-    #     print(f"World size: {world.get_size()}. Generation time: {str(int(time.time()) - int(timestamp))} seconds")
     
     world = prep_world(world_width, world_height, initial_pop_count, seed, chunk_size)
     
-    # np.random.seed(hash(seed) % 2**32)
+    # Import all recipes from the recipes.json file
+    ItemManager.register_items()
+    RecipeManager.register_recipes()
 
     return world
 
