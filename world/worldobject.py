@@ -1,4 +1,6 @@
+from dataclasses import dataclass
 from enum import Enum
+from typing import Protocol
 
 class WORLD_OBJECT_TYPE(Enum):
     ITEM = 0
@@ -8,8 +10,7 @@ class WORLD_OBJECT_TYPE(Enum):
     RESOURCE = 4
     RESOURCE_NODE = 5
 
-class WorldObject:
-    def __init__(self, name, description, object_type: WORLD_OBJECT_TYPE):
-        self.name = name
-        self.description = description
-        self.object_type = object_type
+@dataclass
+class WorldObject(Protocol):
+    name: str
+    description: str

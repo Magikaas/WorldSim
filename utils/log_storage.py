@@ -31,7 +31,8 @@ class LogStore:
         for log_level in log_levels:
             with open(f"logs/{str(log_level).split('.')[1]}.log", "a") as f:
                 for message in self.messages:
-                    f.write(str(message) + "\n")
+                    if message.level == log_level:
+                        f.write(str(message) + "\n")
         
         self.messages = []
 

@@ -1,14 +1,12 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from hmac import new
 from typing import List
 
-from obj.item import Item, ItemStack, Food, Potable
-from obj.item.item import Liquid
+from obj.item import ItemStack, Food, Liquid, Water, Axe, Pickaxe
 from obj.worldobj.entity import Entity
 from obj.worldobj.building import Building
 from ai.condition import Condition, BuildingExistsCondition, HasItemsCondition, EntityPropertyCondition, PropertyCheckOperator
-from ai.action import Action, CompositeAction, MoveAction, BuildAction, GatherAction
+from ai.action import Action, CompositeAction, CraftAxeAction, CraftPickaxeAction, MoveAction, BuildAction, GatherAction
 
 from managers.pop_manager import pop_manager as PopManager
 from managers.logger_manager import logger_manager
@@ -26,6 +24,11 @@ class GoalPriority(Enum):
     LOW = 1
     MEDIUM = 2
     HIGH = 3
+
+class GoalState(Enum):
+    INACTIVE = "Inactive"
+    ACTIVE = "Active"
+    FULFILLED = "Fulfilled"
 
 class Goal(ABC):
     actions: List[Action]
@@ -46,6 +49,8 @@ class Goal(ABC):
         
         self.determine_conditions()
         self.determine_actions()
+        
+        self.state = GoalState.INACTIVE
         
         self.tries = 0
     
@@ -79,6 +84,8 @@ class Goal(ABC):
     def execute(self):
         all_actions_finished = True
         
+        self.state = GoalState.ACTIVE
+        
         self.logger.debug(f"Executing goal {self}.", actor=self.entity)
         
         actions_string = "|".join([str(action) if not action.is_finished() else '' for action in self.actions])
@@ -103,7 +110,9 @@ class Goal(ABC):
             if action.is_finished():
                 if not action.check_post_conditions():
                     self.logger.debug(f"Action {action} finished, but post conditions not met.", actor=self.entity)
-                    self.reset()
+                    
+                    all_actions_finished = False
+                    action.reset()
                     break
                 self.logger.debug(f"Action {action} previously finished.", actor=self.entity)
                 continue
@@ -137,6 +146,7 @@ class Goal(ABC):
         
         if self.fulfilled:
             self.logger.debug("Goal fulfilment status: FULFILLED.", actor=self.entity)
+            self.state = GoalState.FULFILLED
         else:
             if all_actions_finished:
                 self.logger.debug("Goal fulfilment status: UNFULFILLED_ACTIONS_COMPLETE.", actor=self.entity)
@@ -200,7 +210,7 @@ class BuildGoal(Goal):
         tile = self.entity.world.get_tile(self.target_location)
         
         for material in materials:
-            self.actions.append(GatherAction(entity=self.entity, resource=material))
+            self.actions.append(GatherAction(entity=self.entity, target_item=material))
         
         self.actions.append(MoveAction(location=self.target_location, entity=self.entity))
         self.actions.append(BuildAction(entity=self.entity, building=self.building, target_tile=tile))
@@ -217,7 +227,7 @@ class GatherGoal(Goal):
         self.add_post_condition(HasItemsCondition(entity_id=self.entity.id, item=self.itemstack))
 
     def determine_actions(self):
-        self.actions.append(GatherAction(entity=self.entity, resource=self.itemstack))
+        self.actions.append(GatherAction(entity=self.entity, target_item=self.itemstack))
 
 class FoodGoal(Goal):
     def __init__(self, entity: Entity, min_food_value: int = 70):
@@ -234,7 +244,7 @@ class FoodGoal(Goal):
     
     def determine_actions(self):
         if self.entity.food < self.min_food_value and len(self.actions) == 0:
-            self.actions.append(GatherAction(entity=self.entity, resource=ItemStack(item=Food(), amount=15 + self.min_food_value - self.entity.food)))
+            self.actions.append(GatherAction(entity=self.entity, target_item=ItemStack(item=Food(), amount=15 + self.min_food_value - self.entity.food)))
 
 class DrinkGoal(Goal):
     def __init__(self, entity: Entity, min_food_value: int = 70):
@@ -250,4 +260,21 @@ class DrinkGoal(Goal):
     
     def determine_actions(self):
         if self.entity.water < self.min_food_value:
-            self.actions.append(GatherAction(entity=self.entity, resource=ItemStack(item=Potable, amount=50 + self.min_food_value - self.entity.water)))
+            self.actions.append(GatherAction(entity=self.entity, target_item=ItemStack(item=Water(), amount=50 + self.min_food_value - self.entity.water)))
+
+
+####################### HARDCODED CRAFTING ACTIONS #######################
+
+class GuaranteeBasicToolsGoal(Goal):
+    def __init__(self, entity: Entity):
+        self.entity = entity
+        
+        super().__init__(type=GoalType.RANDOM_SEARCH)
+    
+    def determine_conditions(self):
+        self.add_prep_condition(HasItemsCondition(entity_id=self.entity.id, item=ItemStack(item=Axe(), amount=1)).invert())
+        self.add_prep_condition(HasItemsCondition(entity_id=self.entity.id, item=ItemStack(item=Pickaxe(), amount=1)).invert())
+    
+    def determine_actions(self):
+        self.actions.append(CraftAxeAction(entity=self.entity))
+        self.actions.append(CraftPickaxeAction(entity=self.entity))

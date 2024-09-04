@@ -1,31 +1,44 @@
 from __future__ import annotations
+from dataclasses import dataclass, field
 from typing import Protocol, TYPE_CHECKING, runtime_checkable
 
 if TYPE_CHECKING:
     import ai.blackboard
 
+class ItemCategory:
+    GENERAL = "general"
+    TOOL = "tool"
+    FOOD = "food"
+    DRINK = "drink"
+    RESOURCE = "resource"
+
+@dataclass
 class Item:
-    def __init__(self, name: str="NO NAME ENTERED", description: str="NO DESCRIPTION ENTERED", value: int=0, weight: int=0, protected: bool=False, durability: int=25):
-        self.name = name
-        self.description = description
-        self.value = value
-        self.weight = weight
-        self.protected = protected
-        self.durability = durability
-        
-        self.category = "general"
-        
-        self.requires_container = False
+    name: str = "NO NAME ENTERED"
+    description: str = "NO DESCRIPTION ENTERED"
+    value: int = 0
+    weight: int = 0
+    protected: bool = False
+    
+    category: str = ItemCategory.GENERAL
+    
+    requires_container: bool = False
+    
+    def __str__(self):
+        return self.name
     
     def __hash__(self):
         return hash(self.name)
+    
+    def __eq__(self, other):
+        return self.name == other.name
 
 # Not an actual item, but an indicator that this variable's value is on the Blackboard linked to the Action it is used in
+@dataclass
 class BlackboardItem:
-    def __init__(self, key, entity, action):
-        self.key = key
-        self.entity = entity
-        self.action = action
+    key: str
+    entity: object
+    action: object
     
     def get_blackboard_value(self):
         blackboard = ai.blackboard.blackboard
@@ -41,19 +54,48 @@ class Potable(Protocol):
     drink_value = 0
 
 @runtime_checkable
-class Tool(Protocol):
+class ItemTypeTool(Protocol):
     durability: int
 
-class Liquid:
-    def __init__(self, name: str, description: str, amount: int):
-        self.name = name
-        self.description = description
-        self.amount = amount
+@dataclass
+class Tool(Item, ItemTypeTool):
+    name: str = "NO TOOL NAME ENTERED"
+    description: str = "NO TOOL DESCRIPTION ENTERED"
+    durability: int = 0
+    max_durability: int = durability
+    
+    category: str = ItemCategory.TOOL
+    tool: bool = True
+    
+    def use(self):
+        self.durability -= 1
+    
+    def can_use(self):
+        return self.durability > 0
+    
+    def repair(self):
+        self.durability = self.max_durability
 
+@dataclass
+class BareHands(Tool):
+    name: str = "Bare Hands"
+    description: str = "Your hands, useful for picking up items and punching things."
+    durability: int = 0
+    max_durability: int = durability
+    
+    category: str = ItemCategory.TOOL
+    tool: bool = True
+
+@dataclass
+class Liquid:
+    name: str
+    description: str
+    amount: int
+
+@dataclass
 class Container:
-    def __init__(self, capacity=0, items=None):
-        self.capacity = capacity
-        self.items = items or []
+    capacity: int = 0
+    items: list[Item] = field(default_factory=list)
 
     def add(self, item):
         if len(self.items) < self.capacity:
@@ -70,11 +112,10 @@ class Container:
 class ItemContainer(Container):
     pass
 
+@dataclass
 class LiquidContainer(Container):
-    def __init__(self, capacity=0, contents=None, liquid: Liquid=None):
-        super().__init__(capacity)
-        self.liquid = liquid
-        self.amount = 0
+    liquid: Liquid = None
+    amount: int = 0
 
     def add(self, item: Liquid):
         if len(self.items) < self.capacity:
@@ -97,10 +138,10 @@ class LiquidContainer(Container):
     def __str__(self):
         return f'<LiquidContainer: {self.items}>'
 
+@dataclass
 class ItemStack:
-    def __init__(self, item, amount=1):
-        self.item = item
-        self.amount = amount
+    item: Item
+    amount: int = 1
     
     def __str__(self) -> str:
         return f'{self.amount} {self.item.name}'
@@ -119,38 +160,36 @@ class ItemStack:
             return True
         return False
 
+@dataclass
 class Food(Item, Edible):
-    def __init__(self, name="Food", description="Generic food item.", value=-1, weight=-1, durability=-1):
-        super().__init__(name=name, description=description, value=value, weight=weight, durability=durability)
-        
-        self.category = "food"
-        self.edible = True
-        self.nutrition = None
+    name: str = "Any Food"
+    description: str = "Any Food Description"
+    category: str = ItemCategory.FOOD
+    edible: bool = True
+    nutrition: int = 0
 
+@dataclass
 class Water(Item, Potable):
-    def __init__(self, name="Water", description="A bottle of water.", value=1, weight=1, durability=25):
-        super().__init__(name=name, description=description, value=value, weight=weight, durability=durability)
-        
-        self.category = "drink"
-        self.potable = True
-        self.drink_value = 10
+    name: str = "NO WATER NAME ENTERED"
+    description: str = "NO WATER DESCRIPTION ENTERED"
+    category: str = ItemCategory.DRINK
+    potable: bool = True
+    drink_value: int = 0
 
+@dataclass
 class Resource(Item):
-    def __init__(self, name="Resource", description="A generic resource.", value=1, weight=1, durability=25):
-        super().__init__(name=name, description=description, value=value, weight=weight, durability=durability)
-        
-        self.category = "resource"
+    name: str = "Any Resource"
+    description: str = "Any Resource Description"
+    category: str = ItemCategory.RESOURCE
+    harvest_tool: Tool = None
 
-class Wood(Resource):
-    def __init__(self, name="Wood", description="A piece of wood, useful for crafting and building.", value=1, weight=5, durability=25):
-        super().__init__(name=name, description=description, value=value, weight=weight, durability=durability)
-
-class Stone(Resource):
-    def __init__(self, name="Stone", description="A piece of stone, useful for crafting and building.", value=1, weight=5, durability=25):
-        super().__init__(name=name, description=description, value=value, weight=weight, durability=durability)
-
+@dataclass
 class Apple(Food):
-    def __init__(self):
-        super().__init__(name="Apple", description="A juicy red apple.", value=5, weight=1, durability=10)
-        
-        self.nutrition = 10
+    name: str = "Apple"
+    description: str = "A juicy red apple."
+    value: int = 5
+    weight: int = 1
+    
+    nutrition: int = 10
+    
+    harvest_tool: Tool = field(default_factory=BareHands)

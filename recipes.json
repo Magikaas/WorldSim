@@ -1,0 +1,36 @@
+{
+    "recipes": [
+        {
+            "materials": [
+                {
+                    "item": "wood",
+                    "amount": 5
+                },
+                {
+                    "item": "stone",
+                    "amount": 3
+                }
+            ],
+            "result": {
+                "item": "axe",
+                "amount": 1
+            }
+        },
+        {
+            "materials": [
+                {
+                    "item": "wood",
+                    "amount": 5
+                },
+                {
+                    "item": "stone",
+                    "amount": 3
+                }
+            ],
+            "result": {
+                "item": "pickaxe",
+                "amount": 1
+            }
+        }
+    ]
+}

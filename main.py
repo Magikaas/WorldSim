@@ -11,6 +11,8 @@ from managers.logger_manager import logger_manager
 from world.world import world, World
 from managers.pop_manager import pop_manager as PopManager
 from managers.pop_move_manager import pop_move_manager as PopMoveManagerInstance
+from managers.recipe_manager import recipe_manager as RecipeManager
+from managers.item_manager import item_manager as ItemManager
 
 from utils.renderoutput import RenderOutput
 
@@ -25,7 +27,7 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
     
     sim_seed = world.seed
     
-    scale = 2
+    scale = 4
     
     show_tooltip = True
     
@@ -91,7 +93,7 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
         # clear()
         if render:
             pygame.event.get()
-            # clock.tick(5)
+            # clock.tick(60)
         
         if render:
             surface = world.render(surface=surface, scale=scale, output=RenderOutput.VARIABLE)
@@ -228,6 +230,7 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
         
         if not paused:
             step_nr += 1
+            logger_manager.sim_step = step_nr
         
         # break
 
@@ -241,25 +244,20 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    size = 512
+    size = 256
     world_width = size
     world_height = size
     initial_pop_count = 1
     seed = 1010
     chunk_size = 16
     
+    # Import all recipes from the recipes.json file
+    ItemManager.register_items()
+    RecipeManager.register_recipes()
+    
     # Generate worlds in different sizes to test the performance of the world generation algorithm
-    # for i in range(1, 6):
-    #     timestamp = str(int(time.time()))
-    #     size = 16 * (2 ** i)
-    #     print(f"Size: {size}")
-    #     world = prep_world(size, size, initial_pop_count, seed, chunk_size)
-        
-    #     print(f"World size: {world.get_size()}. Generation time: {str(int(time.time()) - int(timestamp))} seconds")
     
     world = prep_world(world_width, world_height, initial_pop_count, seed, chunk_size)
-    
-    # np.random.seed(hash(seed) % 2**32)
 
     return world
 
@@ -288,7 +286,7 @@ def prep_world(width, height, initial_pop_count, seed, chunk_size):
 def main():
     world = prep_simulation()
     
-    max_simulation_steps = 2000
+    max_simulation_steps = 20000
     render_frequency = 250
     
     do_render = True # Set to True to render each step of the simulation to an image file
