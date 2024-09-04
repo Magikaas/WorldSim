@@ -2,11 +2,11 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List
 
-from obj.item import ItemStack, Food, Liquid, Water
+from obj.item import ItemStack, Food, Liquid, Water, Axe, Pickaxe
 from obj.worldobj.entity import Entity
 from obj.worldobj.building import Building
 from ai.condition import Condition, BuildingExistsCondition, HasItemsCondition, EntityPropertyCondition, PropertyCheckOperator
-from ai.action import Action, CompositeAction, MoveAction, BuildAction, GatherAction
+from ai.action import Action, CompositeAction, CraftAxeAction, CraftPickaxeAction, MoveAction, BuildAction, GatherAction
 
 from managers.pop_manager import pop_manager as PopManager
 from managers.logger_manager import logger_manager
@@ -261,3 +261,20 @@ class DrinkGoal(Goal):
     def determine_actions(self):
         if self.entity.water < self.min_food_value:
             self.actions.append(GatherAction(entity=self.entity, target_item=ItemStack(item=Water(), amount=50 + self.min_food_value - self.entity.water)))
+
+
+####################### HARDCODED CRAFTING ACTIONS #######################
+
+class GuaranteeBasicToolsGoal(Goal):
+    def __init__(self, entity: Entity):
+        self.entity = entity
+        
+        super().__init__(type=GoalType.RANDOM_SEARCH)
+    
+    def determine_conditions(self):
+        self.add_prep_condition(HasItemsCondition(entity_id=self.entity.id, item=ItemStack(item=Axe(), amount=1)).invert())
+        self.add_prep_condition(HasItemsCondition(entity_id=self.entity.id, item=ItemStack(item=Pickaxe(), amount=1)).invert())
+    
+    def determine_actions(self):
+        self.actions.append(CraftAxeAction(entity=self.entity))
+        self.actions.append(CraftPickaxeAction(entity=self.entity))

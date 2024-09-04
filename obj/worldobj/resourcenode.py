@@ -4,6 +4,7 @@
 
 from dataclasses import dataclass, field
 from obj.item import Axe, BareHands, ItemStack, Pickaxe, Tool
+from obj.item.item import Resource
 from world.worldobject import WorldObject
 from .harvestable import Harvestable, HarvestType
 from obj.item import Item, Wood, Stone, Apple
@@ -13,7 +14,7 @@ class ResourceNode(WorldObject, Harvestable):
     name: str = 'resource_node'
     description: str = 'A resource node'
     harvest_tool: Tool|None = None
-    harvestable_resource: Item = None
+    harvestable_resource: Resource = None
     resource_amount: int = 1000
     
     def harvest(self, amount):

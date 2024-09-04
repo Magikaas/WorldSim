@@ -5,6 +5,7 @@ from crafting.recipe import Recipe
 from managers.logger_manager import logger_manager
 from obj import item
 from obj.item import Item, ItemStack, ItemCategory
+from obj.item.item import BareHands, Tool
 from obj.worldobj.entity import Entity, EntityState
 from obj.worldobj.building import Building
 
@@ -59,6 +60,7 @@ class Action(ABC):
     def activate(self):
         self.logger.info("Activating action %s" % self.name, actor=self.entity)
         self.state = ActionState.ACTIVE
+        self.logger.custom("Action %s:%s activated" % (self.name, hash(self)), actor=self.entity, level_name="ACTION_ACTIVATED")
     
     def is_active(self):
         return self.state == ActionState.ACTIVE
@@ -75,6 +77,7 @@ class Action(ABC):
     def finish(self):
         self.logger.info("Finishing action %s" % self.name, actor=self.entity)
         self.state = ActionState.DONE
+        self.logger.custom("Action %s:%s finished" % (self.name, hash(self)), actor=self.entity, level_name="ACTION_FINISHED")
     
     def is_finished(self):
         return self.state == ActionState.DONE
@@ -85,7 +88,7 @@ class Action(ABC):
         
         if isinstance(location, str) and location.startswith("resource_location:"):
             locations = Blackboard.get(entity=self.entity, action=self.parent_action, key=location)
-            location = None
+            location = ""
         
         if locations is not None and len(locations) > 0:
             closest_location = world.find_closest_location(self.entity.location, locations, self.entity)
@@ -93,7 +96,7 @@ class Action(ABC):
             if closest_location is not None:
                 location = closest_location
         
-        if location is None:
+        if location == "" or location is None:
             self.logger.debug("No location found", actor=self.entity)
             return None
         
@@ -370,11 +373,12 @@ class LocateResourceAction(Action):
         self.finish()
 
 class HarvestAction(Action):
-    def __init__(self, entity: Entity, amount:int=0, parent_action: CompositeAction|None = None):
+    def __init__(self, entity: Entity, gather_tool: Tool|None = None, amount:int = 0, parent_action: CompositeAction|None = None):
         super().__init__(name="harvest", entity=entity, parent_action=parent_action)
         
         self.amount = amount
         self.pop_state = EntityState.GATHERING
+        self.gather_tool = gather_tool
     
     def __str__(self):
         return super().__str__() + ":" + str(self.amount)
@@ -396,6 +400,11 @@ class HarvestAction(Action):
         
         item = resourcenode.harvestable_resource
         
+        # Do checks to see if the pop can harvest the resource with the tool they have
+        if item.harvest_tool is not None and self.gather_tool is not None and self.gather_tool != BareHands() and item.harvest_tool != self.gather_tool:
+            self.logger.warn("Pop does not have the required tool %s to harvest resource %s" % (item.harvest_tool, item.name), actor=self.entity)
+            return False
+        
         item_stack = ItemStack(item, self.amount)
         
         PopManager.give_item_to_pop(pop=self.entity, item=item_stack)
@@ -409,9 +418,10 @@ class HarvestAction(Action):
         return False
 
 class GatherAction(CompositeAction):
-    def __init__(self, entity: Entity, target_item: ItemStack, parent_action: CompositeAction|None = None):
+    def __init__(self, entity: Entity, target_item: ItemStack, gather_tool: Tool|None = None, parent_action: CompositeAction|None = None):
         self.resource = target_item
         self.pop_state = EntityState.GATHERING
+        self.gather_tool = gather_tool
         
         super().__init__(name="gather", entity=entity, parent_action=parent_action)
     
@@ -439,9 +449,12 @@ class GatherAction(CompositeAction):
             resource_key = ':'.join(["resource_location", item.category, item.name]) if isinstance(item, Item) else type(item)
             
             self.add_action(LocateResourceAction(entity=self.entity, resource=item, parent_action=self))
-            self.add_action(GuaranteeRequiredToolsAction(entity=self.entity, parent_action=self))
+            
+            if self.gather_tool is not None and self.gather_tool != BareHands():
+                self.add_action(GuaranteeRequiredToolsAction(entity=self.entity, parent_action=self))
+            
             self.add_action(MoveAction(entity=self.entity, location=resource_key, parent_action=self))
-            self.add_action(HarvestAction(entity=self.entity, amount=amount, parent_action=self))
+            self.add_action(HarvestAction(entity=self.entity, gather_tool=self.gather_tool, amount=amount, parent_action=self))
     
     def start(self) -> bool:
         return super().start()
@@ -450,11 +463,11 @@ class GatherAction(CompositeAction):
         return super().update()
 
 class CraftCompositeAction(CompositeAction):
-    def __init__(self, entity: Entity, recipe: Recipe, parent_action: CompositeAction|None = None):
+    def __init__(self, name: str, entity: Entity, recipe: Recipe, parent_action: CompositeAction|None = None):
         self.recipe = recipe
         self.pop_state = EntityState.CRAFTING
         
-        super().__init__(name="craft_composite", entity=entity, parent_action=parent_action)
+        super().__init__(name=name, entity=entity, parent_action=parent_action)
     
     def __str__(self):
         return super().__str__() + ":" + str(self.recipe)
@@ -464,6 +477,10 @@ class CraftCompositeAction(CompositeAction):
             self.add_action(GatherAction(entity=self.entity, target_item=item, parent_action=self))
         
         self.add_action(CraftAction(entity=self.entity, recipe=self.recipe, parent_action=self))
+    
+    def determine_conditions(self):
+        self.add_prep_condition(HasItemsCondition(entity_id=self.entity.id, item=self.recipe.result).invert())
+        self.add_post_condition(HasItemsCondition(entity_id=self.entity.id, item=self.recipe.result))
 
 class CraftAction(Action):
     def __init__(self, entity: Entity, recipe: Recipe, parent_action: CompositeAction|None = None):
@@ -559,3 +576,30 @@ class GuaranteeRequiredToolsAction(CompositeAction):
                 break
         
         self.required_tools = required_tools
+
+
+####################### HARDCODED CRAFTING ACTIONS #######################
+
+class CraftAxeAction(CraftCompositeAction):
+    def __init__(self, entity: Entity, parent_action: CompositeAction|None = None):
+        recipe = RecipeManager.get_recipe("axe")
+        
+        super().__init__(name="craft_axe_action", entity=entity, recipe=recipe, parent_action=parent_action)
+    
+    def determine_actions(self):
+        for item in self.recipe.materials:
+            self.add_action(GatherAction(entity=self.entity, target_item=item, gather_tool=BareHands(), parent_action=self))
+        
+        self.add_action(CraftAction(entity=self.entity, recipe=self.recipe, parent_action=self))
+
+class CraftPickaxeAction(CraftCompositeAction):
+    def __init__(self, entity: Entity, parent_action: CompositeAction|None = None):
+        recipe = RecipeManager.get_recipe("pickaxe")
+        
+        super().__init__(name="craft_pickaxe_action", entity=entity, recipe=recipe, parent_action=parent_action)
+    
+    def determine_actions(self):
+        for item in self.recipe.materials:
+            self.add_action(GatherAction(entity=self.entity, target_item=item, gather_tool=BareHands(), parent_action=self))
+        
+        self.add_action(CraftAction(entity=self.entity, recipe=self.recipe, parent_action=self))

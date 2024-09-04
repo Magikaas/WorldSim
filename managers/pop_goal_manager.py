@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
 
+from ai.action import CompositeAction
 from ai.goal import Goal, GoalPriority
 from utils.logger import Logger
 
@@ -19,7 +20,7 @@ class PopGoalManager:
         
         self.logger = Logger(pop.name + "_goal_manager", logger_manager)
     
-    def add_goal(self, goal):
+    def add_goal(self, goal: Goal):
         self.goals.append(goal)
     
     def get_active_foreground_goal(self) -> Goal|None:

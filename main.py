@@ -27,7 +27,7 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
     
     sim_seed = world.seed
     
-    scale = 5
+    scale = 4
     
     show_tooltip = True
     
@@ -93,7 +93,7 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
         # clear()
         if render:
             pygame.event.get()
-            # clock.tick(5)
+            # clock.tick(60)
         
         if render:
             surface = world.render(surface=surface, scale=scale, output=RenderOutput.VARIABLE)
@@ -230,6 +230,7 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
         
         if not paused:
             step_nr += 1
+            logger_manager.sim_step = step_nr
         
         # break
 
@@ -243,20 +244,20 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    size = 128
+    size = 256
     world_width = size
     world_height = size
     initial_pop_count = 1
     seed = 1010
     chunk_size = 16
     
-    # Generate worlds in different sizes to test the performance of the world generation algorithm
-    
-    world = prep_world(world_width, world_height, initial_pop_count, seed, chunk_size)
-    
     # Import all recipes from the recipes.json file
     ItemManager.register_items()
     RecipeManager.register_recipes()
+    
+    # Generate worlds in different sizes to test the performance of the world generation algorithm
+    
+    world = prep_world(world_width, world_height, initial_pop_count, seed, chunk_size)
 
     return world
 
@@ -285,7 +286,7 @@ def prep_world(width, height, initial_pop_count, seed, chunk_size):
 def main():
     world = prep_simulation()
     
-    max_simulation_steps = 2000
+    max_simulation_steps = 20000
     render_frequency = 250
     
     do_render = True # Set to True to render each step of the simulation to an image file
@@ -312,7 +313,7 @@ if __name__ == "__main__":
         
         # stats.print_stats()
         with open("profile/" + timestamp + ".txt", "w") as f:
-            stats = pstats.Stats(profiler, stream=f).sort_stats('tottime')
+            stats = pstats.Stats(profiler, stream=f).sort_stats('cumtime')
             print("Printing stats")
             stats.print_stats()
             print("Finished printing stats")

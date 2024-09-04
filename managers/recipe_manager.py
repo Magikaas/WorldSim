@@ -16,10 +16,10 @@ class RecipeManager():
         self.logger = Logger("recipemgr", logger_manager)
     
     def add_recipe(self, recipe: Recipe):
-        self.recipes[recipe.result.item.name] = recipe
+        self.recipes[recipe.result.item.name.lower()] = recipe
     
     def get_recipe(self, item_name: str) -> Recipe:
-        return self.recipes.get(item_name)
+        return self.recipes.get(item_name.lower())
     
     def remove_recipe(self, item_name: str):
         del self.recipes[item_name]

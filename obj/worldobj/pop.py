@@ -12,7 +12,7 @@ from managers.pop_goal_manager import PopGoalManager
 
 from .entity import Entity, EntityState
 
-from ai.goal import FoodGoal, BuildGoal, Goal
+from ai.goal import FoodGoal, BuildGoal, Goal, GuaranteeBasicToolsGoal
 
 from obj.item import Item, ItemStack, Food
 from obj.worldobj.building import Hut
@@ -50,12 +50,13 @@ class Pop(Entity):
         self.logger = Logger(name, logger_manager)
     
     def initialise_default_goals(self):
-        self.add_goal(FoodGoal(self))
+        self.add_goal(FoodGoal(entity=self))
+        self.add_goal(GuaranteeBasicToolsGoal(entity=self))
     
     def move_to_world(self, world):
         self.world = world
     
-    def add_goal(self, goal: PopGoal):
+    def add_goal(self, goal: Goal):
         self.pop_goal_manager.add_goal(goal)
     
     def get_current_goal(self) -> Goal:
@@ -76,7 +77,7 @@ class Pop(Entity):
     def is_dead(self):
         return self.health <= 0
     
-    def eat_food(self, food: ItemStack):
+    def eat_food(self, food: ItemStack<Food>):
         self.logger.debug("Pop %s is eating %s" % (self.name, food.item.name))
         self.inventory.remove_item(ItemStack(food.item, 1))
         

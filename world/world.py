@@ -320,7 +320,7 @@ class World(RenderableObserver):
     def trigger_force_render(self):
         self.chunk_manager.make_all_dirty()
     
-    def render(self, surface, filename=None, scale=1, output=RenderOutput.FILE, screen=None, map_render_type=MapRenderType.ALL, force_render=False) -> pygame.Surface:
+    def render(self, surface: pygame.Surface, filename=None, scale=1, output=RenderOutput.FILE, screen=None, map_render_type=MapRenderType.ALL, force_render=False) -> pygame.Surface:
         tile_renderer = TileRenderer()
         
         if force_render:
@@ -357,7 +357,7 @@ class World(RenderableObserver):
                         
                         if resource_node is not None and type(resource_node) is not type(NoResource()):
                             font = pygame.font.SysFont('robotoregular', 8)
-                            resource_text = font.render(resource_node.harvestable_resource.name[0], 1, (255, 255, 255))
+                            resource_text = font.render(resource_node.harvestable_resource.name[0], True, (255, 255, 255))
                             surface.blit(resource_text, (tile.location[0] * scale, tile.location[1] * scale))
                         
                         tile.dirty = False
@@ -376,7 +376,7 @@ class World(RenderableObserver):
     def notify(self, subject):
         subject.dirty = True
     
-    def get_all_tiles_within_distance(self, location: Location, distance: int = 5) -> List[Tile]:
+    def get_chunks_within_distance(self, location: Location, distance: int = 5) -> List[Chunk]:
         # Find resource nodes near the location
         search_chunks = []
         
@@ -416,7 +416,7 @@ class World(RenderableObserver):
         return closest_location
     
     def find_tiles_with_resourcenodes_near(self, location: Location, resourcenode_type: ResourceNode, distance: int = 5) -> List[Tile]:
-        search_chunks = self.get_all_tiles_within_distance(location=location, distance=distance)
+        search_chunks = self.get_chunks_within_distance(location=location, distance=distance)
         
         resourcenode_tiles = []
         
@@ -428,13 +428,13 @@ class World(RenderableObserver):
                     if abs(tile.location[0] - location[0]) <= distance and abs(tile.location[1] - location[1]) <= distance:
                         resourcenode = tile.resourcenode
                         
-                        if isinstance(resourcenode, resourcenode_type):
+                        if isinstance(resourcenode, type(resourcenode_type)):
                             resourcenode_tiles.append(tile)
         
         return resourcenode_tiles
     
-    def find_tiles_with_resource_near(self, location: Location, resource_type: type, distance: int = 5) -> List[Tile]:
-        search_chunks = self.get_all_tiles_within_distance(location=location, distance=distance)
+    def find_tiles_with_resource_near(self, location: Location, resource_type: Item, distance: int = 5) -> List[Tile]:
+        search_chunks = self.get_chunks_within_distance(location=location, distance=distance)
         
         resourcenode_tiles = []
         
