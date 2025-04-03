@@ -77,7 +77,7 @@ class Pop(Entity):
     def is_dead(self):
         return self.health <= 0
     
-    def eat_food(self, food: ItemStack<Food>):
+    def eat_food(self, food: ItemStack):
         self.logger.debug("Pop %s is eating %s" % (self.name, food.item.name))
         self.inventory.remove_item(ItemStack(food.item, 1))
         

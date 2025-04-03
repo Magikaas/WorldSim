@@ -232,7 +232,8 @@ class World(RenderableObserver):
                             failed_adding += 1
                             continue
         
-        self.logger.debug("Failed adding resources:", failed_adding)
+        if failed_adding > 0:
+            self.logger.debug("Failed adding resources:", failed_adding)
 
     def generate_animals(self):
         # TODO
@@ -447,7 +448,9 @@ class World(RenderableObserver):
                         if tile.resourcenode is not None:
                             if isinstance(resource_type, Item):
                                 if isinstance(tile.resourcenode.harvestable_resource, type(resource_type)):
-                                    resourcenode_tiles.append(tile)
+                                    if tile.resourcenode.resource_amount > 0:
+                                        resourcenode_tiles.append(tile)
+                                    # resourcenode_tiles.append(tile)
                             else:
                                 # If the resource type is not an item, check if the resource node is a type of item
                                 if isinstance(tile.resourcenode.harvestable_resource, resource_type):

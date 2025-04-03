@@ -56,12 +56,10 @@ class WoodResource(ResourceNode):
     description: str = 'A tree resource'
     harvest_tool: Tool|None = field(default_factory=Axe)
     harvestable_resource: Item = field(default_factory=Wood)
+    resource_amount: int = 25
     
     def __repr__(self):
         return f'{self.type} tree'
-    
-    def harvest(self, amount):
-        return [self.harvestable_resource for i in range(amount)]
     
     # Currently unlimited resources
     # TODO: Add check on resource amount

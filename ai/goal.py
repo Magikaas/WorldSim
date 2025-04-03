@@ -95,7 +95,8 @@ class Goal(ABC):
         self.logger.debug(f"Inventory: {inventory_string}", actor=self.entity)
         
         for action in self.actions:
-            self.logger.debug(f"Checking action {action}.", actor=self.entity)
+            self.logger.debug(f"Checking action {action} : {action.state}.", actor=self.entity)
+            
             if not action.is_active() and not action.is_finished() and action.check_post_conditions():
                 action.finish()
                 self.logger.debug(f"Action {action} finished without execution - Already completed.", actor=self.entity)
@@ -253,6 +254,8 @@ class DrinkGoal(Goal):
         self.min_food_value = min_food_value
         
         super().__init__(type=GoalType.RANDOM_SEARCH)
+        
+        self.priority = GoalPriority.BACKGROUND
     
     def determine_conditions(self):
         self.add_prep_condition(EntityPropertyCondition(entity_id=self.entity.id, property="water", value=self.min_food_value, operator=PropertyCheckOperator.LESS_THAN))

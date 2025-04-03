@@ -405,7 +405,7 @@ class HarvestAction(Action):
             self.logger.warn("Pop does not have the required tool %s to harvest resource %s" % (item.harvest_tool, item.name), actor=self.entity)
             return False
         
-        item_stack = ItemStack(item, self.amount)
+        item_stack = resourcenode.harvest(self.amount)
         
         PopManager.give_item_to_pop(pop=self.entity, item=item_stack)
     
@@ -502,7 +502,11 @@ class CraftAction(Action):
         
         self.entity.state = self.pop_state
         
+        # TODO: Add time to crafting
+        
         self.entity.craft(self.recipe)
+        
+        self.logger.info("Crafted %s" % (self.recipe.result.item.name), actor=self.entity, printMessage=True)
         
         self.finish()
     

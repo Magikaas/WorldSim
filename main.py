@@ -93,7 +93,7 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
         # clear()
         if render:
             pygame.event.get()
-            # clock.tick(60)
+            clock.tick(60)
         
         if render:
             surface = world.render(surface=surface, scale=scale, output=RenderOutput.VARIABLE)
@@ -286,7 +286,7 @@ def prep_world(width, height, initial_pop_count, seed, chunk_size):
 def main():
     world = prep_simulation()
     
-    max_simulation_steps = 20000
+    max_simulation_steps = 1000
     render_frequency = 250
     
     do_render = True # Set to True to render each step of the simulation to an image file

@@ -27,7 +27,7 @@ class Logger:
         self.manager = manager
         manager.loggers[name] = self
     
-    def log(self, log_level, message: str, *args, actor: obj.worldobj.entity.Entity = None, level_name: str = None):
+    def log(self, log_level, message: str, *args, actor: obj.worldobj.entity.Entity = None, printMessage=False, level_name: str = None):
         log_level = level_name if level_name else log_level
         log_message = LogMessage(self.name, message, log_level, *args, actor = actor, sim_step = self.manager.sim_step)
         
@@ -35,28 +35,29 @@ class Logger:
         
         # self.messages[log_level].append(log_message)
         
-        # print(log_message)
+        if printMessage:
+            print(log_message)
         
         if len(self.log_store.get_messages()) > 250:
             self.log_store.flush_messages()
     
-    def info(self, message: str, *args, actor=None):
-        self.log(LogLevel.INFO, message, *args, actor=actor)
+    def info(self, message: str, *args, actor=None, printMessage=False):
+        self.log(LogLevel.INFO, message, *args, actor=actor, printMessage=printMessage)
     
-    def warn(self, message: str, *args, actor=None):
-        self.log(LogLevel.WARN, message, *args, actor=actor)
+    def warn(self, message: str, *args, actor=None, printMessage=False):
+        self.log(LogLevel.WARN, message, *args, actor=actor, printMessage=printMessage)
     
-    def error(self, message: str, *args, actor=None):
-        self.log(LogLevel.ERROR, message, *args, actor=actor)
+    def error(self, message: str, *args, actor=None, printMessage=False):
+        self.log(LogLevel.ERROR, message, *args, actor=actor, printMessage=printMessage)
     
-    def fatal(self, message: str, *args, actor=None):
-        self.log(LogLevel.FATAL, message, *args, actor=actor)
+    def fatal(self, message: str, *args, actor=None, printMessage=False):
+        self.log(LogLevel.FATAL, message, *args, actor=actor, printMessage=printMessage)
     
-    def debug(self, message: str, *args, actor=None):
-        self.log(LogLevel.DEBUG, message, *args, actor=actor)
+    def debug(self, message: str, *args, actor=None, printMessage=False):
+        self.log(LogLevel.DEBUG, message, *args, actor=actor, printMessage=printMessage)
     
-    def custom(self, message: str, *args, actor=None, level_name: str = "CUSTOM"):
-        self.log(LogLevel.CUSTOM, message, *args, actor=actor)
+    def custom(self, message: str, *args, actor=None, printMessage=False, level_name: str = "CUSTOM"):
+        self.log(LogLevel.CUSTOM, message, *args, actor=actor, printMessage=printMessage)
     
     def flush_messages(self):
         self.log_store.flush_messages()
