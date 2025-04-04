@@ -93,7 +93,7 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
         # clear()
         if render:
             pygame.event.get()
-            clock.tick(60)
+            # clock.tick(60)
         
         if render:
             surface = world.render(surface=surface, scale=scale, output=RenderOutput.VARIABLE)

@@ -5,7 +5,7 @@ from typing import List
 from obj.item import ItemStack, Food, Liquid, Water, Axe, Pickaxe
 from obj.worldobj.entity import Entity
 from obj.worldobj.building import Building
-from ai.condition import Condition, BuildingExistsCondition, HasItemsCondition, EntityPropertyCondition, PropertyCheckOperator
+from ai.condition import AndCondition, Condition, BuildingExistsCondition, HasItemsCondition, EntityPropertyCondition, OrCondition, PropertyCheckOperator
 from ai.action import Action, CompositeAction, CraftAxeAction, CraftPickaxeAction, MoveAction, BuildAction, GatherAction
 
 from managers.pop_manager import pop_manager as PopManager
@@ -67,15 +67,17 @@ class Goal(ABC):
         self.determine_actions()
     
     def __str__(self):
-        return f"Goal: {self.type}"
+        return f"Goal: {type(self)} | {self.type}"
     
     def check_prep_conditions(self):
+        self.logger.debug("Checking pre conditions for goal %s" % self, actor=self.entity)
         for condition in self.conditions["prep"]:
             if condition.check_condition() == False:
                 return False
         return True
     
     def check_post_conditions(self):
+        self.logger.debug("Checking post conditions for goal %s" % self, actor=self.entity)
         for condition in self.conditions["post"]:
             if condition.check_condition() == False:
                 return False
@@ -135,7 +137,7 @@ class Goal(ABC):
                 all_actions_finished = False
                 
                 if self.tries > 20:
-                    self.logger.debug(f"Action {action} failed.", actor=self.entity)
+                    self.logger.debug(f"Action {action} failed after 20 tries.", actor=self.entity)
                     self.reset()
                     break
             else:
@@ -154,28 +156,47 @@ class Goal(ABC):
                 self.reset()
             else:
                 self.logger.debug("Goal fulfilment status: UNFULFILLED_ONGOING.", actor=self.entity)
+                
+                # Log the state of each action
+                for action in self.actions:
+                    if action.is_active():
+                        self.logger.debug(f"Action {action} is active.", actor=self.entity)
+                    elif action.is_finished():
+                        self.logger.debug(f"Action {action} is finished.", actor=self.entity)
+                    else:
+                        self.logger.debug(f"Action {action} is not active.", actor=self.entity)
         
         return self.fulfilled
     
     def can_execute(self):
+        self.logger.debug("Checking if goal %s can be executed." % str(self), actor=self.entity)
+        
         if self.is_fulfilled():
+            self.logger.debug("Goal is already fulfilled, can not be executed.", actor=self.entity)
             return False
         
         if len(self.actions) == 0:
             self.determine_actions()
+            self.logger.debug("No actions found, goal can not be executed.", actor=self.entity)
             return False
         
+        self.logger.debug("Goal has actions, checking pre conditions.", actor=self.entity)
         return self.check_prep_conditions()
     
     def is_fulfilled(self):
+        self.logger.debug("Checking if goal %s is fulfilled." % str(self), actor=self.entity)
+        
         for condition in self.conditions["post"]:
             if not condition.check_condition():
+                self.logger.debug("Post condition %s not fulfilled." % str(condition), actor=self.entity)
                 return False
         
         for action in self.actions:
             if not action.is_finished():
+                self.logger.debug("Action %s not finished." % str(action), actor=self.entity)
                 return False
         
+        self.logger.debug("Goal %s is fulfilled." % str(self), actor=self.entity)
         return True
     
     def add_prep_condition(self, condition: Condition):
@@ -275,8 +296,15 @@ class GuaranteeBasicToolsGoal(Goal):
         super().__init__(type=GoalType.RANDOM_SEARCH)
     
     def determine_conditions(self):
-        self.add_prep_condition(HasItemsCondition(entity_id=self.entity.id, item=ItemStack(item=Axe(), amount=1)).invert())
-        self.add_prep_condition(HasItemsCondition(entity_id=self.entity.id, item=ItemStack(item=Pickaxe(), amount=1)).invert())
+        prep_condition = OrCondition([HasItemsCondition(entity_id=self.entity.id, item=ItemStack(item=Axe(), amount=1)).invert(),
+                                      HasItemsCondition(entity_id=self.entity.id, item=ItemStack(item=Pickaxe(), amount=1)).invert()])
+        
+        self.add_prep_condition(prep_condition)
+        
+        post_condition = AndCondition([HasItemsCondition(entity_id=self.entity.id, item=ItemStack(item=Axe(), amount=1)),
+                                       HasItemsCondition(entity_id=self.entity.id, item=ItemStack(item=Pickaxe(), amount=1))])
+        
+        self.add_post_condition(post_condition)
     
     def determine_actions(self):
         self.actions.append(CraftAxeAction(entity=self.entity))

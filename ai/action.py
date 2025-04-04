@@ -54,30 +54,30 @@ class Action(ABC):
         return self.name
     
     def deactivate(self):
-        self.logger.info("Deactivating action %s" % self.name, actor=self.entity)
+        self.logger.debug("Deactivating action %s" % self, actor=self.entity)
         self.state = ActionState.INACTIVE
     
     def activate(self):
-        self.logger.info("Activating action %s" % self.name, actor=self.entity)
+        self.logger.debug("Activating action %s" % self, actor=self.entity)
         self.state = ActionState.ACTIVE
-        self.logger.custom("Action %s:%s activated" % (self.name, hash(self)), actor=self.entity, level_name="ACTION_ACTIVATED")
+        # self.logger.custom("Action %s:%s activated" % (self.name, hash(self)), actor=self.entity, level_name="ACTION_ACTIVATED")
     
     def is_active(self):
         return self.state == ActionState.ACTIVE
     
     def reset(self):
-        self.logger.info("Resetting action %s" % self.name, actor=self.entity)
+        self.logger.debug("Resetting action %s" % self, actor=self.entity)
         
         self.conditions = {"prep": [], "post": []}
-        self.state = ActionState.INACTIVE
+        self.deactivate()
         self.retries = 0
         self.determine_conditions()
         self.determine_actions()
     
     def finish(self):
-        self.logger.info("Finishing action %s" % self.name, actor=self.entity)
+        self.logger.debug("Finishing action %s" % self, actor=self.entity)
         self.state = ActionState.DONE
-        self.logger.custom("Action %s:%s finished" % (self.name, hash(self)), actor=self.entity, level_name="ACTION_FINISHED")
+        # self.logger.custom("Action %s:%s finished" % (self.name, hash(self)), actor=self.entity, level_name="ACTION_FINISHED")
     
     def is_finished(self):
         return self.state == ActionState.DONE
@@ -105,9 +105,13 @@ class Action(ABC):
         return destination_tile
     
     def execute(self):
-        self.retries += 1
+        if self.is_finished():
+            self.logger.debug("Action %s is already finished" % self, actor=self.entity)
+            return True
         
-        # self.logger.debug("Entity %s is executing action %s" % (self.entity.name, self.name))
+        self.logger.debug("Entity %s is executing action %s" % (self.entity.name, self.name))
+        
+        self.retries += 1
         
         if not self.is_active() and not self.is_finished() and not self.check_prep_conditions():
             if self.retries > 5:
@@ -117,6 +121,7 @@ class Action(ABC):
                 
                 if self.retries > 15:
                     self.logger.error("Failed to execute action %s after %s retries" % (self.name, self.retries), actor=self.entity)
+                    self.logger.debug("Action %s failed to execute - Reason: %s" % (self, self.get_failed_post_conditions()), actor=self.entity)
                     self.reset()
             return False
         
@@ -138,16 +143,34 @@ class Action(ABC):
     def check_prep_conditions(self) -> bool:
         for condition in self.conditions["prep"]:
             if condition.check_condition() == False:
-                # self.logger.debug("Pre condition %s for action %s failed" % (condition.type, self), actor=self.entity)
+                self.logger.debug("Pre condition %s for action %s failed" % (condition.type, self), actor=self.entity)
                 return False
         return True
     
     def check_post_conditions(self) -> bool:
         for condition in self.conditions["post"]:
             if condition.check_condition() == False:
-                # self.logger.debug("Post condition %s for action %s failed" % (condition.type, self), actor=self.entity)
+                self.logger.debug("Post condition %s for action %s failed" % (condition.type, self), actor=self.entity)
                 return False
         return True
+    
+    def get_failed_prep_conditions(self) -> list[Condition]:
+        failed_conditions = []
+        
+        for condition in self.conditions["prep"]:
+            if not condition.check_condition():
+                failed_conditions.append(condition)
+        
+        return failed_conditions
+    
+    def get_failed_post_conditions(self) -> list[Condition]:
+        failed_conditions = []
+        
+        for condition in self.conditions["post"]:
+            if not condition.check_condition():
+                failed_conditions.append(condition)
+        
+        return failed_conditions
     
     def add_prep_condition(self, condition: Condition):
         self.conditions["prep"].append(condition)
@@ -191,6 +214,8 @@ class CompositeAction(Action):
     
     def update(self) -> bool:
         result = True
+        
+        self.logger.debug("Updating composite action %s" % self, actor=self.entity)
         
         for action in self.actions:
             if action.is_finished():
@@ -396,7 +421,7 @@ class HarvestAction(Action):
             self.logger.warn("No resource node found at location %s" % str(location), actor=self.entity)
             return False
         else:
-            self.logger.info("Harvesting resource %s from node %s" % (resourcenode.harvestable_resource.name, resourcenode.name), actor=self.entity)
+            self.logger.debug("Harvesting resource %s from node %s" % (resourcenode.harvestable_resource.name, resourcenode.name), actor=self.entity)
         
         item = resourcenode.harvestable_resource
         
@@ -441,6 +466,7 @@ class GatherAction(CompositeAction):
             recipe = RecipeManager.get_recipe(item.name)
             if recipe is None:
                 self.logger.error("No recipe found for %s" % item.name, actor=self.entity)
+                self.logger.debug("No recipe found for %s" % item.name, actor=self.entity)
                 return
             
             self.add_action(CraftCompositeAction(entity=self.entity, recipe=recipe, parent_action=self))
