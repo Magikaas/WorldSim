@@ -75,7 +75,7 @@ class Action(ABC):
         self.determine_actions()
     
     def finish(self):
-        self.logger.debug("Finishing action %s" % self, actor=self.entity)
+        self.logger.debug("Finishing action %s" % self, actor=self.entity, printMessage=True)
         self.state = ActionState.DONE
         # self.logger.custom("Action %s:%s finished" % (self.name, hash(self)), actor=self.entity, level_name="ACTION_FINISHED")
     
@@ -185,7 +185,7 @@ class Action(ABC):
         pass
     
     @abstractmethod
-    def start() -> bool: ...
+    def start(self) -> bool: ...
     
     @abstractmethod
     def update(self) -> bool: ...
@@ -230,7 +230,7 @@ class CompositeAction(Action):
                     continue
                 break
             else:
-                return action.execute()
+                result = action.execute()
         
         if result:
             self.finish()
@@ -534,7 +534,7 @@ class CraftAction(Action):
         
         self.logger.info("Crafted %s" % (self.recipe.result.item.name), actor=self.entity, printMessage=True)
         
-        self.finish()
+        return True
     
     def update(self):
         return False

@@ -7,11 +7,11 @@ from .pop_move_manager import PopMoveManager
 from .logger_manager import logger_manager
 
 if TYPE_CHECKING:
-    import obj.worldobj.pop
+    import obj.worldobj.creatures.pop
 
 class PopManager():
     _id_counter = 1
-    pops: dict[int, obj.worldobj.pop.Pop] = {}
+    pops: dict[int, obj.worldobj.creatures.pop.Pop] = {}
     
     def __init__(self):
         self.logger = Logger("pop_manager", logger_manager)
@@ -23,11 +23,11 @@ class PopManager():
         if name is None:
             name = "Pop %s" % len(self.pops)
         
-        from obj.worldobj.pop import Pop
-        pop = Pop(id=len(self.pops), name=name, location=location, world=world)
+        from obj.worldobj.creatures.pop import Pop
+        pop = Pop(name=name, location=location, world=world)
         return pop
     
-    def add_pop(self, pop: obj.worldobj.pop.Pop):
+    def add_pop(self, pop: obj.worldobj.creatures.pop.Pop):
         if pop.id is None:
             pop.id = self._id_counter
             self._id_counter += 1
@@ -41,13 +41,13 @@ class PopManager():
     def update_pop(self, pop):
         self.pops[pop.id] = pop
     
-    def get_pops(self) -> List[obj.worldobj.pop.Pop]:
+    def get_pops(self) -> List[obj.worldobj.creatures.pop.Pop]:
         return self.pops.values()
     
-    def get_pop(self, id) -> obj.worldobj.pop.Pop:
+    def get_pop(self, id) -> obj.worldobj.creatures.pop.Pop:
         return self.pops[id]
     
-    def get_idle_pops(self) -> List[obj.worldobj.pop.Pop]:
+    def get_idle_pops(self) -> List[obj.worldobj.creatures.pop.Pop]:
         idle_pops = []
         for pop in self.pops.values():
             if pop.is_idle():
@@ -61,18 +61,18 @@ class PopManager():
                 pops.append(pop)
         return pops
     
-    def give_item_to_pop(self, pop: obj.worldobj.pop.Pop, item):
+    def give_item_to_pop(self, pop: obj.worldobj.creatures.pop.Pop, item):
         self.logger.debug("Giving %sx %s to %s" % (item.amount, item.item.name, pop.name), actor=pop)
         pop.add_item(item)
         self.update_pop(pop)
     
-    def kill_pop(self, pop: obj.worldobj.pop.Pop):
+    def kill_pop(self, pop: obj.worldobj.creatures.pop.Pop):
         self.logger.debug("Killing pop", actor=pop)
         self.remove_pop(pop)
         self.remove_pop_from_world(pop)
         pop.world.trigger_force_render()
     
-    def remove_pop_from_world(self, pop: obj.worldobj.pop.Pop):
+    def remove_pop_from_world(self, pop: obj.worldobj.creatures.pop.Pop):
         self.logger.debug("Removing pop from world", actor=pop)
         pop.world.get_tile(pop.location).remove_pop(pop)
     

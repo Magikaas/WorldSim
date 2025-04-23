@@ -8,7 +8,7 @@ from managers.logger_manager import logger_manager
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    import obj.worldobj.pop
+    import obj.worldobj.creatures.pop
     import world
     import path
 
@@ -44,7 +44,7 @@ class PopMoveManager:
         self.logger.debug("Emptying moves for pop %s" % pop.name, actor=pop)
         self.popmoves[pop.id] = []
     
-    def get_move_for_pop(self, pop: obj.worldobj.pop.Pop):
+    def get_move_for_pop(self, pop: obj.worldobj.creatures.pop.Pop):
         if pop.id not in self.popmoves or len(self.popmoves[pop.id]) == 0:
             return None
         else:
@@ -59,7 +59,7 @@ class PopMoveManager:
         
         self.popmoves[popmove.pop.id].append(popmove)
     
-    def move_pop_to_tile(self, pop: obj.worldobj.pop.Pop, destination: world.tile.Tile):
+    def move_pop_to_tile(self, pop: obj.worldobj.creatures.pop.Pop, destination: world.tile.Tile):
         # print("Moving pop %s to %s" % (pop.location, direction))
         total_distance = abs(pop.location[0] - destination.location[0]) + abs(pop.location[1] - destination.location[1])
         

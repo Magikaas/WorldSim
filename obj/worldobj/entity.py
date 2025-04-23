@@ -1,5 +1,5 @@
 from abc import ABC
-from poplib import CR
+from uuid import uuid4
 
 class EntityState:
     IDLE = "idle"
@@ -20,8 +20,9 @@ class EntityState:
     CRAFTING = "crafting"
 
 class Entity(ABC):
-    def __init__(self, id, name, location, world, age, role, health, food, water, state, speed):
-        self.id = id
+    def __init__(self, name, location, world, age, role, health, food, water, state, speed):
+        # Initialize the entity with basic attributes and random UUID
+        self.id = str(uuid4())
         self.name = name
         self.location = location
         self.world = world
@@ -31,5 +32,4 @@ class Entity(ABC):
         self.food = food
         self.water = water
         self.state = state
-        self.previous_state = state
         self.speed = speed
