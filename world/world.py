@@ -82,18 +82,18 @@ class World(RenderableObserver):
 
     def prepare(self):
         # Placeholder for any setup that needs to be done before the simulation starts
-        self.logger.debug("Preparing world")
-        self.logger.debug("Generating terrain map")
+        self.logger.debug("Preparing world", printMessage=True)
+        self.logger.debug("Generating terrain map", printMessage=True)
         self.generate_terrain()
-        self.logger.debug("Generating temperature map")
+        self.logger.debug("Generating temperature map", printMessage=True)
         self.generate_temperature()
         
-        self.logger.debug("Initializing chunk manager")
+        self.logger.debug("Initializing chunk manager", printMessage=True)
         self.chunk_manager.initialize_chunks()
         
-        self.logger.debug("Generating map")
+        self.logger.debug("Generating map", printMessage=True)
         self.generate_map()
-        self.logger.debug("Generating resource nodes")
+        self.logger.debug("Generating resource nodes", printMessage=True)
         self.generate_resourcenodes()
     
     def generate_terrain(self):

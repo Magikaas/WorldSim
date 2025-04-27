@@ -16,6 +16,7 @@ from utils.logger import Logger
 
 class GoalType(Enum):
     RANDOM_SEARCH = "Random Search"
+    CRAFTING = "Crafting"
     RESOURCE_HARVEST = "Resource Harvest"
     BUILD = "Build"
 
@@ -95,6 +96,9 @@ class Goal(ABC):
         
         self.logger.debug(f"Actions: {actions_string}", actor=self.entity)
         self.logger.debug(f"Inventory: {inventory_string}", actor=self.entity)
+        
+        if self.actions is None or len(self.actions) == 0:
+            self.reset()
         
         for action in self.actions:
             self.logger.debug(f"Checking action {action} : {action.state}.", actor=self.entity)
@@ -186,6 +190,10 @@ class Goal(ABC):
     def is_fulfilled(self):
         self.logger.debug("Checking if goal %s is fulfilled." % str(self), actor=self.entity)
         
+        if self.fulfilled:
+            self.logger.debug("Goal %s previously fulfilled." % str(self), actor=self.entity)
+            return True
+        
         for condition in self.conditions["post"]:
             if not condition.check_condition():
                 self.logger.debug("Post condition %s not fulfilled." % str(condition), actor=self.entity)
@@ -196,7 +204,7 @@ class Goal(ABC):
                 self.logger.debug("Action %s not finished." % str(action), actor=self.entity)
                 return False
         
-        self.logger.debug("Goal %s is fulfilled." % str(self), actor=self.entity)
+        self.logger.debug("%s is fulfilled." % str(self), actor=self.entity)
         return True
     
     def add_prep_condition(self, condition: Condition):
@@ -293,7 +301,7 @@ class GuaranteeBasicToolsGoal(Goal):
     def __init__(self, entity: Entity):
         self.entity = entity
         
-        super().__init__(type=GoalType.RANDOM_SEARCH)
+        super().__init__(type=GoalType.CRAFTING)
     
     def determine_conditions(self):
         prep_condition = OrCondition([HasItemsCondition(entity_id=self.entity.id, item=ItemStack(item=Axe(), amount=1)).invert(),

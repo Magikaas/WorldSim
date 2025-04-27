@@ -5,8 +5,9 @@ import random
 import os
 import io
 import time
+import json
+import tkinter as tk
 
-# examples/generate_world.py
 from managers.logger_manager import logger_manager
 from world.world import world, World
 from managers.pop_manager import pop_manager as PopManager
@@ -18,16 +19,22 @@ from utils.renderoutput import RenderOutput
 
 from utils.logger import Logger
 
-import os
-    
 logger = Logger("general", logger_manager)
+
+with open("config.json", "r") as f:
+    config = json.load(f)
 
 def run_simulation(world: World, max_simulation_steps=1000, render=False, render_frequency=1000):
     step_nr = 0
     
     sim_seed = world.seed
+
+    root = tk.Tk()
+    screen_height = root.winfo_screenheight()
+    root.destroy()
     
-    scale = 4
+    scale = screen_height / world.width
+    scale = scale - (scale % 1)
     
     show_tooltip = True
     
@@ -38,9 +45,15 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
     
     pygame.init()
     
-    logger.debug("=====================================")
-    logger.debug("Starting simulation")
-    logger.debug("=====================================")
+    logger.debug("=====================================", printMessage=True)
+    logger.debug("Starting simulation", printMessage=True)
+    logger.debug("=====================================", printMessage=True)
+    logger.debug("World size: %s x %s" % (world.width, world.height), printMessage=True)
+    logger.debug("World scale: %s" % (scale), printMessage=True)
+    logger.debug("World seed: %s" % (world.seed), printMessage=True)
+    logger.debug("World chunk size: %s" % (world.chunk_size), printMessage=True)
+    logger.debug("Initial pop count: %s" % (len(PopManager.get_pops())), printMessage=True)
+    logger.debug("======================================", printMessage=True)
     
     if render:
         clock = pygame.time.Clock()
@@ -93,7 +106,7 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
         # clear()
         if render:
             pygame.event.get()
-            # clock.tick(60)
+            # clock.tick(config["sim_fps"])
         
         if render:
             surface = world.render(surface=surface, scale=scale, output=RenderOutput.VARIABLE)
@@ -117,7 +130,7 @@ def run_simulation(world: World, max_simulation_steps=1000, render=False, render
                 if os.path.exists("output/" + str_seed) == False:
                     os.mkdir("output/" + str_seed)
                 
-                logger.info("Writing map file to ", filename)
+                logger.info("Writing map file to ", filename, printMessage=True)
                 
                 surface = world.render(surface=surface, scale=scale, output=RenderOutput.FILE, filename=filename)
             
@@ -244,12 +257,12 @@ def world_reached_goal(world: World):
     return False  # Placeholder logic
 
 def prep_simulation():
-    size = 256
+    size = config["world_size"]
     world_width = size
     world_height = size
-    initial_pop_count = 1
-    seed = 1010
-    chunk_size = 16
+    initial_pop_count = config["initial_pop_count"]
+    seed = config["seed"]
+    chunk_size = config["chunk_size"]
     
     # Import all recipes from the recipes.json file
     ItemManager.register_items()
@@ -279,15 +292,15 @@ def prep_world(width, height, initial_pop_count, seed, chunk_size):
     world.prepare()
     
     for i in range(initial_pop_count):
-        world.add_pop_at((random.randint(0, world.width-1), random.randint(0, world.height-1)))
+        world.add_pop_at((random.randint(20, world.width-21), random.randint(20, world.height-21)))
     
     return world
 
 def main():
     world = prep_simulation()
     
-    max_simulation_steps = 1000
-    render_frequency = 250
+    max_simulation_steps = config["max_simulation_steps"]
+    render_frequency = config["render_frequency"]
     
     do_render = True # Set to True to render each step of the simulation to an image file
 
