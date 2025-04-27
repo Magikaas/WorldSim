@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-import obj.worldobj.animal
+import obj.worldobj.creatures.animal
 from obj.worldobj.building import Building
 from obj.worldobj.resourcenode import NoResource
 
@@ -18,13 +18,13 @@ from object_types import Colour, Location
 
 if TYPE_CHECKING:
     import obj.worldobj.resourcenode
-    import obj.worldobj.pop
+    import obj.worldobj.creatures.pop
     import obj.worldobj
     import obj.worldobj.building
 
 class Tile(Subject):
-    pops: dict[str, obj.worldobj.pop.Pop]
-    animals: list[obj.worldobj.animal.Animal] = {}
+    pops: dict[str, obj.worldobj.creatures.pop.Pop]
+    animals: list[obj.worldobj.creatures.animal.Animal] = []
     resourcenode: obj.worldobj.resourcenode.ResourceNode = NoResource()
     terrain: Terrain
     biome: Biome
@@ -67,7 +67,7 @@ class Tile(Subject):
         
         del self.pops[pop.id]
     
-    def add_animal(self, animal):
+    def add_animal(self, animal: obj.worldobj.creatures.animal.Animal):
         if len(self.animals) == 0:
             self.notify_observers()
         
@@ -96,7 +96,7 @@ class Tile(Subject):
     def has_building(self):
         return hasattr(self, "building") and self.building is not None
     
-    def build(self, building: obj.worldobj.building.Building, pop: obj.worldobj.pop.Pop):
+    def build(self, building: obj.worldobj.building.Building, pop: obj.worldobj.creatures.pop.Pop):
         inventory = pop.inventory
         
         if self.has_building():

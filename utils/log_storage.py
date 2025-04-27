@@ -26,6 +26,8 @@ class LogStore:
         # Write to general logfile and individual logfiles
         with open("logs/all.log", "a") as f:
             for message in self.messages:
+                if message.level.name == "DEBUG" or message.level.name == "CUSTOM":
+                    continue
                 f.write(str(message) + "\n")
         
         for log_level in log_levels:

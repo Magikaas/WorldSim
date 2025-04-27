@@ -4,3 +4,4 @@ map/*
 profile/*
 logs/*
 .vscode/*
+config.json

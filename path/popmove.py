@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import obj.worldobj.pop
+    import obj.worldobj.creatures.pop
     import world.tile
 
 class PopMove:
-    def __init__(self, pop: obj.worldobj.pop.Pop, destination_tile: world.tile.Tile):
+    def __init__(self, pop: obj.worldobj.creatures.pop.Pop, destination_tile: world.tile.Tile):
         self.pop = pop
         self.destination_tile = destination_tile
         self.progress = 0

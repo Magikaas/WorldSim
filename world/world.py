@@ -82,18 +82,18 @@ class World(RenderableObserver):
 
     def prepare(self):
         # Placeholder for any setup that needs to be done before the simulation starts
-        self.logger.debug("Preparing world")
-        self.logger.debug("Generating terrain map")
+        self.logger.debug("Preparing world", printMessage=True)
+        self.logger.debug("Generating terrain map", printMessage=True)
         self.generate_terrain()
-        self.logger.debug("Generating temperature map")
+        self.logger.debug("Generating temperature map", printMessage=True)
         self.generate_temperature()
         
-        self.logger.debug("Initializing chunk manager")
+        self.logger.debug("Initializing chunk manager", printMessage=True)
         self.chunk_manager.initialize_chunks()
         
-        self.logger.debug("Generating map")
+        self.logger.debug("Generating map", printMessage=True)
         self.generate_map()
-        self.logger.debug("Generating resource nodes")
+        self.logger.debug("Generating resource nodes", printMessage=True)
         self.generate_resourcenodes()
     
     def generate_terrain(self):
@@ -232,7 +232,8 @@ class World(RenderableObserver):
                             failed_adding += 1
                             continue
         
-        self.logger.debug("Failed adding resources:", failed_adding)
+        if failed_adding > 0:
+            self.logger.debug("Failed adding resources:", failed_adding)
 
     def generate_animals(self):
         # TODO
@@ -447,7 +448,9 @@ class World(RenderableObserver):
                         if tile.resourcenode is not None:
                             if isinstance(resource_type, Item):
                                 if isinstance(tile.resourcenode.harvestable_resource, type(resource_type)):
-                                    resourcenode_tiles.append(tile)
+                                    if tile.resourcenode.resource_amount > 0:
+                                        resourcenode_tiles.append(tile)
+                                    # resourcenode_tiles.append(tile)
                             else:
                                 # If the resource type is not an item, check if the resource node is a type of item
                                 if isinstance(tile.resourcenode.harvestable_resource, resource_type):

@@ -1,19 +1,12 @@
 import numpy as np
-from .entity import Entity
+from ..entity import Entity, EntityState
 
 class Animal(Entity):
-    def __init__(self, species, location, health, food_value):
-        self.species = species
-        self.location = location
-        self.health = health
-        self.food_value = food_value
-        self.age = 0
+    def __init__(self, name, location, world, age=0, role='worker', health=100, food=100, water=100, state=EntityState.IDLE, speed=1):
+        super().__init__(name, location, world, age, role, health, food, water, state, speed)
+        self.species = "Generic Animal"
+        self.hunger_rate = 1
         self.max_age = 100
-        self.dead = False
-        self.reproduction_rate = 0.5
-        self.hunger_rate = 0.5
-        self.food_value = 50
-        self.food = np.random.randn(25, 100)
 
     def move(self, new_location):
         self.location = new_location

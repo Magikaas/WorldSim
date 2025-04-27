@@ -3,7 +3,6 @@ import os
 from turtle import width
 from typing import List
 
-# worldgen/generator.py
 from pynoise.noisemodule import Perlin
 from pynoise.noiseutil import noise_map_plane
 
