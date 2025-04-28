@@ -1,0 +1,7 @@
+{
+    "id": "stick",
+    "name": "Stick",
+    "type": "resource",
+    "description": "A simple stick, useful for many things.",
+    "category": "raw_materials"
+}

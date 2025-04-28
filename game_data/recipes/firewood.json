@@ -1,0 +1,12 @@
+{
+    "material": [
+        {
+            "item": "stick",
+            "amount": 10
+        }
+    ],
+    "result": {
+        "item": "firewood",
+        "amount": 1
+    }
+}

@@ -1,3 +1,5 @@
+import os
+
 import inspect
 from managers.logger_manager import logger_manager
 import obj.item.items
@@ -29,6 +31,11 @@ class ItemManager():
         for cls in self.list_classes(obj.item.items):
             if issubclass(cls, Item) and cls != Item:
                 self.add_item(cls())
+        
+        # Register all items in the game_data/items folder
+        for filename in os.listdir('game_data/items'):
+            if filename.endswith('.json') and filename != '__init__.py':
+                module_name = filename[:-3]
         
 
 item_manager = ItemManager()

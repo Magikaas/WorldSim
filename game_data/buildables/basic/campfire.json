@@ -1,0 +1,15 @@
+{
+    "material": [
+        {
+            "item": "stone",
+            "amount": 10
+        },
+        {
+            "item": "firewood",
+            "amount": 1
+        }
+    ],
+    "result": {
+        "building": "campfire"
+    }
+}

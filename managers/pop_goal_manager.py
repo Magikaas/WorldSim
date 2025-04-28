@@ -54,6 +54,10 @@ class PopGoalManager:
             for goal in self.goals:
                 if not goal.is_fulfilled():
                     return goal
+                else:
+                    # If the goal is fulfilled, we need to remove it from the list of goals
+                    self.logger.debug("Removing goal: " + str(goal))
+                    self.goals.remove(goal)
         else:
             return None
         

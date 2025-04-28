@@ -1,0 +1,7 @@
+{
+    "id": "pickaxe",
+    "name": "Pickaxe",
+    "type": "tool",
+    "description": "A sturdy pickaxe for mining ores and breaking rocks.",
+    "category": "tools"
+}

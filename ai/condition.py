@@ -58,7 +58,7 @@ class Condition(ABC):
             self.logger.debug("Condition: %s" % self)
         
         check_outcome = self.check()
-        self.logger.debug("%s: %s" % ("yes" if check_outcome else "no", self.outcome_response()))
+        self.logger.debug("%s, %s" % ("Yes" if check_outcome else "No", self.outcome_response()))
         return self.inverted is not check_outcome
     
     def invert(self):
@@ -101,9 +101,9 @@ class AndCondition(CombinedCondition):
     
     def check(self):
         for condition in self.conditions:
-            if condition.check_condition():
-                return True
-        return False
+            if not condition.check_condition():
+                return False
+        return True
     
     def add_condition(self, condition: Condition):
         self.conditions.append(condition)
@@ -166,7 +166,7 @@ class ExclusiveSelectorCondition(CombinedCondition):
             if condition.check_condition():
                 responses.append(condition.outcome_response())
         
-        return "Result: %s" % " and ".join(responses)
+        return "%s" % " and ".join(responses)
 
 class SelectorCondition(Condition):
     def __init__(self, conditions: List[Condition]):
@@ -213,12 +213,6 @@ class HasItemsCondition(Condition):
         self.failure_consequence = ConditionFailureConsequence.ABORT
     
     def __str__(self):
-        items = [str(item) for item in self.entity.inventory.items.values()]
-        items = ", ".join(items)
-        
-        if len(items) == 0:
-            items = "None"
-        
         return "Do I own: %s?" % self.item
     
     def check(self):
@@ -257,8 +251,8 @@ class BuildingExistsCondition(Condition):
         self.failure_consequence = ConditionFailureConsequence.ABORT
     
     def __str__(self):
-        building_string = str(self.target_tile.building) if self.target_tile.has_building() else "None"
-        return "Is building %s at %s?" % (self.building, building_string)
+        # building_string = str(self.target_tile.building) if self.target_tile.has_building() else "None"
+        return "Is building %s at %s?" % (self.building, self.target_tile.location)
     
     def check(self):
         if not self.target_tile.has_building():
@@ -315,10 +309,11 @@ class EntityPropertyCondition(Condition):
         return result
     
     def outcome_response(self):
+        prop_value = eval("self.entity." + self.property)
         if self.check():
-            return "My %s is %s %s" % (self.property, self.operator.value, self.value)
+            return "My %s is %s and thus %s %s" % (self.property, prop_value, self.operator.value, self.value)
         else:
-            return "My %s is not %s %s" % (self.property, self.operator.value, self.value)
+            return "My %s is %s and thus not %s %s" % (self.property, prop_value, self.operator.value, self.value)
 
 class BlackboardContainsLocationCondition(Condition):
     def __init__(self, resource: Item, entity_id: int, max_distance = 0):

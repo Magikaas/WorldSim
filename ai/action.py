@@ -75,7 +75,7 @@ class Action(ABC):
         self.determine_actions()
     
     def finish(self):
-        self.logger.debug("Finishing action %s" % self, actor=self.entity, printMessage=True)
+        self.logger.debug("Finishing action %s" % self, actor=self.entity, printMessage=False)
         self.state = ActionState.DONE
         # self.logger.custom("Action %s:%s finished" % (self.name, hash(self)), actor=self.entity, level_name="ACTION_FINISHED")
     
@@ -532,7 +532,7 @@ class CraftAction(Action):
         
         self.entity.craft(self.recipe)
         
-        self.logger.info("Crafted %s" % (self.recipe.result.item.name), actor=self.entity, printMessage=True)
+        self.logger.info("Crafted %s" % (self.recipe.result.item.name), actor=self.entity, printMessage=False)
         
         return True
     
