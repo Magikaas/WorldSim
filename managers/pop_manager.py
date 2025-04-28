@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import List, TYPE_CHECKING
+from uuid import uuid4
 
 from utils.logger import Logger
 
@@ -11,7 +12,7 @@ if TYPE_CHECKING:
 
 class PopManager():
     _id_counter = 1
-    pops: dict[int, obj.worldobj.creatures.pop.Pop] = {}
+    pops: dict[str, obj.worldobj.creatures.pop.Pop] = {}
     
     def __init__(self):
         self.logger = Logger("pop_manager", logger_manager)
@@ -29,8 +30,7 @@ class PopManager():
     
     def add_pop(self, pop: obj.worldobj.creatures.pop.Pop):
         if pop.id is None:
-            pop.id = self._id_counter
-            self._id_counter += 1
+            self.logger.error("Pop has no ID")
         
         self.update_pop(pop)
         self.pops[pop.id].initialise_default_goals()

@@ -188,7 +188,7 @@ class SelectorCondition(Condition):
         self.conditions.append(condition)
 
 class OnLocationCondition(Condition):
-    def __init__(self, entity_id: int, location: Location|str):
+    def __init__(self, entity_id: str, location: Location|str):
         super().__init__(type="move")
         self.entity = PopManager.get_pop(entity_id)
         self.location = location
@@ -205,7 +205,7 @@ class OnLocationCondition(Condition):
         return "I am at %s" % str(self.entity.location)
 
 class HasItemsCondition(Condition):
-    def __init__(self, entity_id: int, item: ItemStack):
+    def __init__(self, entity_id: str, item: ItemStack):
         super().__init__(type="has_items")
         self.entity = PopManager.get_pop(entity_id)
         self.item = item
@@ -292,7 +292,7 @@ class ResourceExistsCondition(Condition):
         return resourcenode.harvestable_resource is self.resource
 
 class EntityPropertyCondition(Condition):
-    def __init__(self, entity_id: int, property: str, value, operator: PropertyCheckOperator = PropertyCheckOperator.EQUALS):
+    def __init__(self, entity_id: str, property: str, value, operator: PropertyCheckOperator = PropertyCheckOperator.EQUALS):
         super().__init__(type="entity_property")
         self.entity = PopManager.get_pop(entity_id)
         self.property = property
@@ -316,7 +316,7 @@ class EntityPropertyCondition(Condition):
             return "My %s is %s and thus not %s %s" % (self.property, prop_value, self.operator.value, self.value)
 
 class BlackboardContainsLocationCondition(Condition):
-    def __init__(self, resource: Item, entity_id: int, max_distance = 0):
+    def __init__(self, resource: Item, entity_id: str, max_distance = 0):
         super().__init__(type="blackboard_contains_location")
         
         self.resource = resource
@@ -359,7 +359,7 @@ class BlackboardContainsLocationCondition(Condition):
         return "I know about the following locations of %s: %s" % (self.resource, resource_locations)
 
 class PopHasMovesCondition(Condition):
-    def __init__(self, entity_id: int):
+    def __init__(self, entity_id: str):
         super().__init__(type="pop_has_moves")
         self.entity = PopManager.get_pop(entity_id)
         
