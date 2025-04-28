@@ -1,0 +1,16 @@
+{
+    "material": [
+        {
+            "item": "stone",
+            "amount": 3
+        },
+        {
+            "item": "wood",
+            "amount": 5
+        }
+    ],
+    "result": {
+        "item": "axe",
+        "amount": 1
+    }
+}

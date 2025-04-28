@@ -1,0 +1,7 @@
+{
+    "id": "axe",
+    "name": "Axe",
+    "type": "tool",
+    "description": "A sharp axe for chopping wood and breaking down trees.",
+    "category": "tools"
+}
