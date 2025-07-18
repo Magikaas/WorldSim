@@ -268,7 +268,7 @@ def prep_simulation():
     ItemManager.register_items()
     RecipeManager.register_recipes()
     
-    # Generate worlds in different sizes to test the performance of the world generation algorithm
+    # TODO: Generate worlds in different sizes to test the performance of the world generation algorithm
     
     world = prep_world(world_width, world_height, initial_pop_count, seed, chunk_size)
 
@@ -324,6 +324,10 @@ if __name__ == "__main__":
         for logger in logger_manager.loggers.values():
             logger.flush_messages()
         
+        # If no profile directory exists, create it
+        if not os.path.exists("profile"):
+            os.mkdir("profile")
+
         # stats.print_stats()
         with open("profile/" + timestamp + ".txt", "w") as f:
             stats = pstats.Stats(profiler, stream=f).sort_stats('cumtime')

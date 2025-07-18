@@ -1,0 +1,9 @@
+{
+    "sim_fps": 60,
+    "world_size": 1000,
+    "seed": 42,
+    "initial_pop_count": 100,
+    "chunk_size": 16,
+    "max_simulation_steps": 1000,
+    "render_frequency": 50,
+}

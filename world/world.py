@@ -6,7 +6,6 @@ import pygame
 
 from pathfinding.core.grid import Grid
 from pathfinding.finder.a_star import AStarFinder, DiagonalMovement
-from sympy import O
 
 from object_types import Location
 from world.terrain import Terrain, TerrainHeight
@@ -38,6 +37,8 @@ from utils.logger import Logger
 from managers.logger_manager import logger_manager
 
 from observer import RenderableObserver
+
+from .map_gen_method import MapGenerationMethod
 
 # Longterm TODO: Make singleton possible with multiple 'Worlds'
 class World(RenderableObserver):
@@ -97,10 +98,10 @@ class World(RenderableObserver):
         self.generate_resourcenodes()
     
     def generate_terrain(self):
-        self.terrain = MapGenerator(seed=self.seed).generate_map((self.height, self.width), chunk_size=self.chunk_size, octaves=5, name="terrain")
+        self.terrain = MapGenerator(seed=self.seed, impl=MapGenerationMethod.CONCURRENT).generate_map(total_map_size=(self.height, self.width), chunk_size=self.chunk_size, octaves=5, name="terrain")
 
     def generate_temperature(self):
-        self.biomes = MapGenerator(seed=self.seed + 1).generate_map((self.height, self.width), chunk_size=self.chunk_size)
+        self.biomes = MapGenerator(seed=self.seed + 1, impl=MapGenerationMethod.CONCURRENT).generate_map(total_map_size=(self.height, self.width), chunk_size=self.chunk_size, octaves=3, name="temperature")
     
     def get_terrain_obj_at(self, x, y) -> Terrain:
         terrain_value = self.terrain[y * self.width + x]
@@ -154,8 +155,8 @@ class World(RenderableObserver):
     def generate_resourcenodes(self):
         chunks = self.chunk_manager.chunks
         
-        resource_density_map = MapGenerator(seed=self.seed + 2).generate_map((len(chunks), len(chunks[0])), chunk_size=1, octaves=5, name="resource_density")
-        # resource_type_map = MapGenerator(seed=self.seed + 3).generate_map((len(chunks), len(chunks[0])), octaves=4, name="resource_type")
+        resource_density_map = MapGenerator(seed=self.seed + 2, impl=MapGenerationMethod.CONCURRENT).generate_map(total_map_size=(len(chunks), len(chunks[0])), chunk_size=1, octaves=5, name="resource_density")
+        # resource_type_map = MapGenerator(seed=self.seed + 3, impl=MapGenerationMethod.ASYNC).generate_map((len(chunks), len(chunks[0])), octaves=4, name="resource_type")
         
         max_resource_per_chunk = 5 # TODO: Make this variable
         resources_amount_to_add = 0
@@ -526,39 +527,34 @@ class World(RenderableObserver):
         
         offsets = (offset_x % self.width, offset_y % self.height)
         
-        # Make 2 dimensional array with all the tiles in the world
         gridnodes = [[1 for j in range(grid_width)] for i in range(grid_height)]
         
-        # Cache tiles for each chunk that is within the area of the pathfinder grid
         chunk_tiles = {}
         
         # Make the tiles around the target location passable and adjust the value based on the tile's speed multiplier
         for x in range(grid_height):
             for y in range(grid_width):
-                # Determine the true x and y coordinates of the tile
-                true_x = (start_location[0] + x) % self.width
-                true_y = (start_location[1] + y) % self.height
+                global_x = (start_location[0] + x) % self.width
+                global_y = (start_location[1] + y) % self.height
                 
-                if chunk_tiles.get((true_x // self.chunk_size, true_y // self.chunk_size)) is None:
-                    chunk = self.chunk_manager.get_chunk_at((true_x, true_y))
-                    chunk_tiles[(true_x // self.chunk_size, true_y // self.chunk_size)] = chunk.tile_manager.tiles
+                if chunk_tiles.get((global_x // self.chunk_size, global_y // self.chunk_size)) is None:
+                    chunk = self.chunk_manager.get_chunk_at((global_x, global_y))
+                    chunk_tiles[(global_x // self.chunk_size, global_y // self.chunk_size)] = chunk.tile_manager.tiles
                 
-                # Determine the true x and y coordinates of the chunk within the chunk grid
-                chunk_true_x = true_x // self.chunk_size
-                chunk_true_y = true_y // self.chunk_size
+                chunk_x = global_x // self.chunk_size
+                chunk_y = global_y // self.chunk_size
                 
-                # Determine the true x and y coordinates of the tile within the chunk
-                chunk_x = true_x % self.chunk_size
-                chunk_y = true_y % self.chunk_size
+                local_x = global_x % self.chunk_size
+                local_y = global_y % self.chunk_size
                 
-                tile = chunk_tiles[(chunk_true_x, chunk_true_y)][chunk_x][chunk_y]
+                tile = chunk_tiles[(chunk_x, chunk_y)][local_x][local_y]
                 
                 if tile.terrain is Ocean() or tile.terrain is ShallowCoastalWater():
-                    weight = 1000
+                    pathing_prio = 1000
                 else:
-                    weight = (1 / tile.terrain.speed_multiplier if tile.terrain.speed_multiplier > 0 else 0)
+                    pathing_prio = (1 / tile.terrain.speed_multiplier if tile.terrain.speed_multiplier > 0 else 0)
                 
-                gridnodes[x][y] = weight
+                gridnodes[x][y] = pathing_prio
         
         grid = Grid(width=len(gridnodes), height=len(gridnodes[0]), matrix=gridnodes, grid_id=0)
         

@@ -1,5 +1,6 @@
-pynoise
+vnoise
 numpy
 pillow
 pygame-ce
-pickle
+pathfinding
+attrs

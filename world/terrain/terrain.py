@@ -1,6 +1,6 @@
 from dataclasses import field, dataclass
 from typing import Type
-from discord import Colour
+from object_types import Colour
 from obj.item.item import Item
 
 class TerrainHeight:
